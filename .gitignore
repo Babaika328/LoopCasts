@@ -1,0 +1,26 @@
+# secrets — never commit, even to a private repo
+.env
+.env.*
+!.env.example
+**/paswoorden*.xlsx
+**/*passwords*.xlsx
+
+# raw personal / financial data — not needed in the repo, keep locally
+**/*.sql
+**/bank/*.csv
+**/KBC export*.csv
+
+# bulk raw data — reference material for analysis, not project code.
+# keep a handful of examples in fixtures/ instead of committing all of this.
+**/Mail exports/
+**/Invoices 2026/
+**/Facturen 2026.xlsx
+**/orders 2025.xlsx
+**/orders 2026*.xlsx
+**/newsletter list MASTER.xlsx
+**/vimeo export*.csv
+
+# local tooling
+.ddev/
+node_modules/
+.DS_Store
