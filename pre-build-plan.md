@@ -4,25 +4,25 @@ Before touching anything: what to automate, why (with numbers, not gut feeling),
 
 ## The numbers that changed the priority order
 
-A `samples/` folder in the data turned out to hold a decoded key for the colour-only status fields used throughout the real spreadsheets. Applying that key to the full dataset (not just the 30-row sample) produced numbers Marieke doesn't currently have herself:
+A `samples/` folder in the data holds a decoded sample of the colour-only status fields, and the handbook (chapter 3) documents the colour legend. Applying both to the full dataset, and then **checking the results against the bank export and the handbook in a final review**, gave the numbers below. Several figures in earlier drafts of this plan were wrong and are corrected here.
 
-- **Payment status, recalculated for real:** of 282 invoices, 206 are confirmed paid (green), 6 are confirmed *underpaid* (orange, €1,750 short), and **70 have no status colour at all — €11,932 genuinely unconfirmed.** Total not-confirmed-paid: **≈ €13,682**. Marieke's own estimate in the handbook: *"I think about €4,000 is open, but I would have to count."* The real number is **more than 3x that.**
-- **VAT reverse-charge is being missed systematically, not just once.** The handbook describes one caught case (Bakker Automatisering, fixed after the fact with a credit note). Checking every foreign customer with a valid EU VAT number against what was actually invoiced found **6 such cases total — 5 of them still sitting wrong**, unnoticed.
-- **Renewal / churn, quantified:** of 397 customers who bought a yearly subscription in 2025, only **73 (18.4%)** show up again in the 2026 orders data (through October). This is the number behind Yasmine's wish: *"Who of our customers is about to leave... we never put them together."* Even allowing for some being simply not yet due, this is a large, currently invisible gap.
-- **The `account_created` colour flag covers 208 of 300 orders (69%)** in `orders 2026.xlsx`, but neither the handbook nor the data says which way it points — the samples key gives the colour's *name*, not its *meaning*. I checked for a pattern by product type and by time; none found. **This one is not decoded — it's an open question, see below.**
+- **Payment status (corrected).** Legend from handbook ch.3: green = paid, orange = paid but wrong amount, no colour = not paid yet. Of 282 invoices, 206 are green, 6 orange, and 70 have no colour (face value ≈ €11,900). An earlier draft called ≈ €13,700 "unconfirmed" and said Marieke's €4,000 guess was three times too low. **That was wrong.** Checking the 70 against the bank export (same amount and a matching name), 41 of the 66 dated inside the export window have a matching payment, so most were paid but never coloured (as a control, 87% of green invoices match the same way). Roughly 25 invoices worth about €4,500 have no matching payment, which is close to Marieke's own €4,000 guess, so her estimate looks about right. The six orange invoices are only a few euros short each (about €47 in total: 590 instead of 599, 46.19 instead of 47.19), probably bank fees on transfers. The real problem is not a missing pile of money, it is that nobody can say who has paid without detective work on Fridays, and customers get access only once a row is green.
+- **VAT reverse-charge (corrected).** Matching each foreign VAT-registered business order to its invoice by number *and* name: 38 orders, 33 correctly reverse-charged, **5 charged Belgian VAT, 1 of which (Bakker) was already fixed by credit note, so 4 are still uncorrected** (about 13% of such orders). An earlier draft said 6 and 5; one of those came from a duplicated invoice number pointing at the wrong row.
+- **Renewals (corrected).** Of 326 distinct customers who bought a yearly plan in 2025, 19% reappear in the 2026 orders, but that counts people who are not yet due. For those who bought January to August 2025 (due by August 2026) it is 32%, and for January to June 44%. Renewals are not automatic because *"there is no automatic payment"* (ch.6), and Lotte sends 80 to 100 renewal emails by hand each month. Caveat: matching is by email address on messy data.
+- **The red flag is documented (corrected).** Handbook ch.3: in Lotte's orders sheet red means *account created* (she started with red before Marieke started using green for paid). So 69% of 2026 orders and 97% of 2025 orders have an account, and this is not a backlog. It is no longer an open question. Lotte creates each account by hand in phpMyAdmin (about 5 minutes), choosing MD5 in a dropdown because the login script requires it.
 - Team-licence seat members (21 orders) are recorded as **Excel cell comments**, invisible unless you hover over the cell, and several are marked *"rest follows"* with no sign the rest ever arrived.
 - **Bank payment references are usable far less often than assumed — checked, not guessed.** Of 1,450 incoming payments in the KBC export, only **276 (19%) carry any matchable invoice or subscription reference.** 956 (66%) have nothing but a generic word ("loopcasts", "abonnement") or a blank field. This is the real reason rule-based matching (invoice number only) can't do the job alone — it directly justifies a fuzzy/AI matching step in the design, not just a "nice to have."
 - **All 136 invoice PDFs checked for calculation errors, not just a sample** — confirms exactly one (2026-0005, the known €180.92-vs-€180.29 case). No others found.
 
 *Correction from an earlier pass:* I originally said the 46 newsletter unsubscribe replies were "never removed" from the master list. Checked properly by matching actual sender addresses against the list: of 45 unique senders, **16 are still on it, 29 were correctly removed.** Real gap, smaller than first claimed — noting the correction rather than leaving the overstated version standing.
 
-## What changes, what doesn't
+## Instructor feedback — what changes, what doesn't
 
-Three points: rebuild the website (it's bad), move off Excel into a real database eventually, and AI can automate the emails as long as a human checks it.
+Three points came back from the instructor: rebuild the website (it's bad), move off Excel into a real database eventually, and AI can automate the emails as long as a human checks it.
 
-- **AI + human-review for emails** — no change needed, this is already the design (order-intake parsing, support triage both keep a human-approval step, specifically because of the phishing email found in the support inbox).
+- **AI + human-review for emails** — kept, in one place: support-email triage with a human-approval step, specifically because of the phishing email found in the support inbox (see the AI section).
 - **Excel → database** — agreed, and it's not a separate project: if the order-intake workflow writes to a real table instead of `orders 2026.xlsx` from day one, the database is a side effect of building order-to-cash correctly (a unique constraint kills the duplicate-invoice-number problem outright; a proper status column kills the colour-with-no-legend problem outright). Migrating the *historical* 2025/2026 Excel data into that table is separate, lower-priority work — it means re-solving every formatting mess (five date formats, three ways to write "Belgium") as a one-time cleanup pass, not an ongoing workflow.
-- **Website rebuild** — agreed in part, needs splitting before it becomes a task. "The website" is two very different things: the static marketing pages (chaotic, but low-risk to redo — this is where git + CI/CD, week 3–4 material, actually belongs) and the members-area login/MySQL app (the SQL-injection/hardcoded-password one). The handbook's own "we do not touch it" and "no test site" apply specifically to the second one. Rebuilding the front pages is reasonable scope; folding the members-area into the same rebuild without a staging environment first would just move the security risk instead of fixing it. Worth asking the instructor directly whether "the website" means both, since that changes the size of the task a lot.
+- **Website rebuild** — agreed in part, needs splitting before it becomes a task. "The website" is two very different things: the static marketing pages (chaotic, but low-risk to redo — this is where git + CI/CD, week 3–4 material, actually belongs) and the members-area login/MySQL app (the SQL-injection/hardcoded-password one). The handbook's own "we do not touch it" and "no test site" apply specifically to the second one. Rebuilding the front pages is reasonable scope; folding the members-area into the same rebuild without a staging environment first would just move the security risk instead of fixing it. This is our call to make, and what matters is that we can explain it: we rebuild both, but in sequence (marketing pages first, members area second, behind a staging environment), and we say why.
 
 ## Roadmap beyond the 12-week project (not core, but now written down so it isn't lost)
 
@@ -39,32 +39,120 @@ The website rebuild is now a confirmed, separate initiative (instructor's call),
 Order intake → invoicing → payment matching are one process (order-to-cash), and the project format wants exactly that: *"one complete process chain, from analysis to a working, documented automation."* Building three separate mini-projects would be the wrong shape for the rubric and wouldn't fix anything end-to-end.
 
 **Scope:**
-1. Webhook-based order form replaces the `mailto:` link (kills the freeform-text root cause; AI step parses/validates).
-2. Order writes a structured row **into a real table, not `orders 2026.xlsx`** (a unique constraint alone kills the duplicate-invoice-number problem).
-3. **Invoice generation, VAT reverse-charge logic, and bank payment matching are delegated to a Belgian invoicing API (Billit or Yuki — to shortlist and pick one), not built by hand in n8n.** n8n's job becomes: call the API to create the invoice, receive its payment-confirmed webhook, and flag whatever the API itself can't resolve. Reasoning: we've already found the exact two mistakes a hand-built version would risk repeating — a duplicated invoice number and 5 missed reverse-charge cases — and getting invoice numbering and VAT rules right is literally the business these services exist for. Most of these also handle the bank side themselves (PSD2 connection, incl. KBC), which removes Marieke's Friday manual export entirely, not just the matching step.
-4. Error handling: anything the AI parser can't confidently fill in on intake, or anything the invoicing API itself can't match/resolve, goes to a human — not silently dropped and not silently auto-approved.
+1. **Online order and payment on the site replaces the `mailto:` link.** A short form (name, email, product, company, VAT number, country) leads to a hosted checkout at a payment provider (Mollie or Stripe, picked in a short spike; Bancontact support matters for Belgian customers). Card data never touches our systems, which keeps the security and privacy story simple.
+2. **The provider's "paid" webhook is the trigger, not the browser.** n8n verifies it, writes the order into a real table instead of `orders 2026.xlsx` (a unique constraint on the payment ID also makes the workflow safe if the same webhook arrives twice), then asks the invoicing API to create the invoice. Monthly subscribers (about 200 a month, currently paying by manual transfer with no usable reference) move to recurring payments through the provider, to be verified in the spike.
+3. **Invoice numbering, VAT (including reverse-charge for foreign VAT-registered businesses) and bank matching are delegated to a Belgian invoicing API (Billit or Yuki, to pick), not built by hand in n8n.** Reasoning unchanged: we found a duplicated invoice number and 5 missed reverse-charge cases in the hand-built version, and getting those right is the business these services exist for. n8n sends the invoice and creates or extends the member account.
+4. **Pay-by-invoice path** for customers who must pay by bank transfer (typically the €599 team licence): a "request invoice" option creates a pending order and an invoice carrying a Belgian structured payment reference, so the incoming transfer can be matched. This targets the 66% of bank payments that currently carry no usable reference.
+5. Error handling: a webhook that fails verification, an invoicing API error, or a payment that matches nothing goes to the error workflow and a human. Not silently dropped, not auto-approved.
 
-This one chain, done properly, closes three of the five original pain points completely (messy orders, duplicate invoices, blind payment matching) and gives a real, defensible "time saved / risk removed" number for the evaluation section: **€13,682 in unclear payments is the headline metric**, not a guess.
+This one chain, done properly, closes three of the five original pain points (messy orders, duplicate invoice numbers, blind payment matching). The defensible evaluation numbers are time and error rates, not a big pile of missing money: the Friday matching session, 80 to 100 renewal emails a month, about 5 minutes per manual account, a duplicated invoice number, 4 uncorrected VAT errors, and roughly €4,500 that cannot currently be matched to a payment.
 
-**Still needs a decision, not yet made:** picking one invoicing API (Billit vs Yuki vs others) and confirming it actually exposes what's needed — invoice creation, reverse-charge handling, and either built-in bank matching or a clean payment-confirmed webhook. If a trial account shows it *doesn't* cover bank matching well, add **Ponto** (Isabel Group, PSD2, supports KBC) as the bank-side piece instead of building that against the raw CSV export.
+**Still needs a decision, not yet made (two short spikes):** (a) payment provider, Mollie vs Stripe: Bancontact, test mode, webhook signature check, recurring payments for monthly subscriptions. (b) invoicing service, Billit vs Yuki: invoice creation via API, reverse-charge handling, structured payment reference, payment status or bank matching, and whether it connects to the chosen provider. If the invoicing service can't match bank payments well, add **Ponto** (PSD2, supports KBC) for that part. Also to check with an accountant, not assert: online checkout forces a VAT rule for every buyer country, including private customers abroad, and that rule may differ from invoicing a Belgian business.
 
 **Explicitly out of scope, folded in as a second workflow if time allows, not core:**
 - Subscription lifecycle / auto-deactivation (123 stale active accounts) — same "trigger → decide → act" shape, but a separate data source (member DB), so a separate (smaller) workflow, not part of order-to-cash.
-- Support ticket triage — real and quantified (497 tickets, 65 unanswered), but a genuinely different trigger and different risk profile (the phishing email is the reason this needs a human-approval step, not full autonomy). Good "week 11 with two more weeks" answer, not the core build.
+- Support ticket triage moved out of this list: it is now the AI component of the project (see the AI section).
 - **Auto-captioning (Whisper or similar speech-to-text):** justified, not just possible — 0 of 599 videos have captions, confirmed in the Vimeo export, and it's directly tied to Pieter's own wish (ch.4: wanting to know which video shows which tool version without rewatching everything) since a searchable transcript solves that side-effect too. Shape: new video uploaded → trigger → transcribe → generate captions → push back via Vimeo's API. Worth separately checking whether EU accessibility rules actually apply to LoopCasts before treating this as a hard compliance deadline rather than a good-practice fix — flagging it, not asserting it.
 
 **Separately — a one-line fix, not a workflow:** the 3 publicly-viewable paid videos found in the Vimeo export (`privacy=anybody`, no domain restriction) just need the privacy setting flipped back. No automation needed, just needs doing.
 
-## What we deliberately do not touch (unchanged, still holds)
+## What we deliberately do not touch first
 
-- **`login.php` / MySQL members backend** — SQL injection, hardcoded password, unsalted MD5 hashes, all real, but the handbook is explicit: *"Nobody here really understands it. We do not touch it,"* and there is no test site. Security remediation, not an automation task.
+- **`login.php` / MySQL members backend, until staging exists** — SQL injection, hardcoded password, unsalted MD5 hashes, all real, but the handbook is explicit: *"Nobody here really understands it. We do not touch it,"* and there is no test site. It gets rewritten later (see roadmap), behind staging, not patched live.
 - **The shared password file / one-login-per-service setup** — a governance fix, not a workflow: move to **Bitwarden** (free tier covers a 5-person team), individual logins per person instead of one shared login per service.
-- **The static site's file chaos and manual FTP deploys** — real debt, but the fix is version control and CI/CD (week 3–4 material), not part of this project.
+- **The static site's file chaos and manual FTP deploys** — real debt, handled in the parallel website track (git + CI/CD), not part of the core n8n project.
 - **Newsletter unsubscribe reconciliation** — real GDPR exposure (16 of 45 unsubscribe repliers, verified by matching addresses, are still on the 5,967-row list), small enough to fix directly rather than build a project around.
 
 ## Open questions for day one (in priority order)
 
-1. **What does the red `account_created` flag actually mean** — done, or not done? 69% of 2026 orders are flagged. Checked `orders 2025.xlsx` too, since it's a closed, presumably fully-resolved year: **97% of it (685/707) is still flagged red.** That leans against "not yet done" as the meaning — a fully settled past year wouldn't plausibly have a 97% open backlog — but it's a lean, not a confirmation. Still don't design anything around this field until Lotte or Marieke says what it actually means.
-2. Is the **€13,682 unconfirmed-payment number** something Marieke already suspects is that large, or does even she not know? (Directly testable against her own €4,000 estimate.)
-3. The 6 reverse-charge VAT misses — does the accountant already know about the 5 uncorrected ones, or is this new information?
+1. ~~What does the red flag mean~~ **Answered by handbook ch.3** (red = account created). Still worth asking: why do about 31% of 2026 orders have no account yet. Is that unpaid orders, recent orders, or missed ones?
+2. Are the roughly 25 invoices (about €4,500) with no matching bank payment really unpaid, or paid under a name or amount my matching missed? Marieke can settle this in an hour.
+3. The 4 uncorrected reverse-charge VAT cases: does the accountant know?
 4. **32 support tickets asking for new courses or floating ideas** never made it to the whiteboard (per ch.5: *"They mostly do not"*) — is anyone even reviewing that inbox for product signal, or is it a dead end by design?
+
+## Tools: the course list versus our plan
+
+Everything on the course tool list gets used, each for a specific job. The additions are only things with a concrete need behind them.
+
+**From the course list (all used):**
+- VS Code + AI assistant: scripts, the page generator, reviewing. Rule from the course applies: if we can't explain what it does and how it fails, it isn't ours.
+- Spreadsheet: opportunity log and the messy sample data only. The system itself moves off Excel.
+- bpmn.io (draw.io as fallback): as-is and to-be process models.
+- zsh/WSL2, Docker Desktop + ddev, git + GitHub + Actions: environment, version control, deploys. Workflow JSON exports live in git; credentials stay inside n8n and are referenced by name, never exported.
+- Bruno (collections are plain files, so they can be committed) and webhook.site: test the invoicing API and inspect our order webhook.
+- n8n self-hosted in Docker: the platform. Open technical detail to settle by week 6: n8n runs in its own compose setup, ddev runs the site and database, so they need to reach each other.
+- Google Sheets + throwaway mail account: the mail account tests invoice delivery and the support-triage flow; a sheet is an optional human-review queue. Not the system of record.
+- LLM API key or local model: drafting replies for support emails. Customer email text leaves our systems for the provider, so API versus local model is decided in week 9 on the data-flow answer below.
+
+**Our additions, with the need for each:**
+- Mollie or Stripe: hosted checkout and the "paid" webhook. Need: orders arrive as free text and payments are matched by hand.
+- Billit or Yuki: invoice numbering, VAT, structured payment reference, bank matching. Need: two real errors already found.
+- MySQL/MariaDB: the order table. Need: unique constraints and a real status column.
+- PHP + PDO + `password_hash()`: members area. Need: SQL injection and MD5 found.
+- A small page generator (Python/Jinja2 or Node): marketing pages from the catalogue. Need: 54 hand-copied pages.
+- ngrok: temporary tunnel so the payment provider's webhooks can reach n8n while it still runs locally. Dev and demo only.
+- Bitwarden: replaces the passwords spreadsheet.
+
+**Optional, only if time allows:** Whisper-style captioning, Ponto (only if the invoicing service can't match payments), subscription lifecycle workflow. Each added tool is something we have to defend and something that can break, so this list stays capped.
+
+## Where the AI step actually fits (and what we must admit in the defence)
+
+Once orders come through a form and an online payment, they arrive structured and nothing needs parsing. Putting AI there would be a tool looking for a job, so it does not go there. The AI step goes where free text is unavoidable: the support inbox (497 tickets, 21.8 hours on average to a first answer, 65 never answered, 68% handled by one person, Dutch and English mixed).
+
+What it does: classify the ticket, flag scam and non-customer mail (the "URGENT invoice overdue" phishing email is the test case), and draft a reply from Lotte's own `support answers.docx` templates. A human approves or edits before anything is sent. For the "copy of invoice", "order status" and "invoice with VAT number" tickets (about 70 in the data), n8n fills the draft from our own order table after the model has classified the mail, so order and invoice data never go to the model. That is what ties this to the order-to-cash chain instead of making it a separate toy. Refunds, cancellations and anything touching an account go straight to a human, because the handbook says "ask Marieke first".
+
+Why AI and not only rules: the same problem arrives as "login problem", "Wachtwoord vergeten" and "can't log in", in two languages, sometimes with a second question in the same mail. Keyword rules handle the obvious cases cheaply, so we start with them and use the model for the messy remainder. What the model may never do is act on its own: no sending, no password resets, no refunds.
+
+## Timeline
+
+- Weeks 1–2: opportunity log, as-is model, scope decision.
+- Week 3: environment and repo working (ddev, Docker, git). Site skeleton and design direction.
+- Week 4 (milestone: analysis): as-is model, opportunity log, scope, expected gain. Short spike on the invoicing API (can happen earlier).
+- Week 5: webhook and API basics. Order form and test-mode checkout posting to a test endpoint (webhook.site first, then ngrok to local n8n), Bruno collections for the payment and invoicing APIs. Marketing-page generator and CI/CD deploy to staging, in parallel.
+- Weeks 6–8 (milestone week 8: core workflow): webhook trigger, database + invoicing API + email integrations, error workflow. Nothing fails silently.
+- Weeks 9–10 (milestone week 10: AI component): support-email triage with draft replies, human approval and the phishing test case.
+- Weeks 11–12: security, privacy, evaluation numbers, documentation, defence dry run.
+- Members-area rewrite: only after the core workflow works, behind staging. It is also the natural answer to "what would you do with two more weeks?"
+
+The website is a parallel track and must not eat n8n time, because n8n is what gets graded. Marketing pages first (they fit the git/CI-CD weeks), members area later.
+
+## Website: "at least normal", ideally good
+
+Keep it simple and consistent rather than fancy:
+- Five page types (home, pricing, course list, course page, members login) plus an order page and a confirmation page. One template each, generated, so a design fix happens once.
+- Plain CSS with variables (one accent colour, one or two fonts), mobile-first, readable contrast, no heavy framework.
+- A real order form that leads to a hosted checkout. The payment provider's webhook, not the browser, creates the order. This replaces the `mailto:` link.
+- Accessibility basics from the start, which also fits the captions finding.
+- Look: light mint and white. Mint as the soft background and surface colour, a darker green for buttons and links, near-black green for body text. Pure mint on white is too low-contrast for text, so mint decorates and dark green carries the words. Starting palette to refine when building: white `#FFFFFF`, mint tint `#EAF7F1`, mint `#A8E6CF`, button green `#1F7A5C` (about 5:1 against white), text `#17332A`. Existing `style.css` is a starting point, not a constraint.
+
+## Defence questions: draft answers from this plan (living section)
+
+- **Why this process?** It is one chain behind three of the biggest pains, and the evidence is concrete: Friday payment matching by hand, a duplicated invoice number, 4 uncorrected VAT errors, about 5 minutes per manual account and 80 to 100 renewal emails a month, with about €4,500 that cannot be matched to a payment.
+- **Why this design, what did we decide against?** Against building invoice numbering and VAT by hand (we found a duplicate number and five missed reverse-charge cases), against AI parsing of order emails once checkout exists (a tool looking for a job), against Laravel for a five-person company, against touching the members area first without staging, against a big-bang Excel migration.
+- **What breaks first, and then?** Likely the payment webhook, the invoicing API or the LLM call. Failed webhooks and API errors go to the error workflow and a human, the order is recorded before invoicing so nothing vanishes, and nothing is auto-approved or auto-sent on failure.
+- **Where does the customer's data go?** Browser → hosted checkout at the payment provider (card data never reaches us) → provider webhook → self-hosted n8n → database and invoicing service. For support, only the email text goes to the LLM provider; order lookups happen in n8n after the model. API versus local model is decided on that.
+- **Two more weeks?** Members-area rewrite on staging, subscription deactivation, more support categories, captions.
+
+## Final review before building
+
+### Design constraints found in the review
+1. **Account creation touches the legacy login.** Today Lotte inserts each account by hand in phpMyAdmin and picks MD5 because the login script demands it (ch.3). If n8n wrote accounts into that table it would either spread the MD5 weakness or break login. Decision: in the first version n8n prepares the account data and a human confirms it. Full automation comes after the members-area rewrite, which also replaces the made-up password (*"first name + a number"*, mailed in plain text) with a "set your password" link.
+2. **Password resets have no identity check.** 15 to 20 a week, and *"I do not check whether the person who mails is really the customer"* (ch.6). The rewrite should send the reset link only to the email address on file.
+3. **Payment matching needs a tolerance.** Small shortfalls of a few euros are normal (the orange rows). Matching must accept a small difference and flag it, not fail.
+4. **Belgian e-invoicing.** Since 1 January 2026, invoices between Belgian VAT-registered businesses must be structured electronic invoices, normally sent through Peppol. LoopCasts emails PDFs. This applies to Belgian business customers, not consumers or foreign buyers, and the accountant should confirm how it applies. It is a concrete reason to use an invoicing service that is a Peppol access point.
+5. **PHP version.** PHP 8.1 (the current host) reached end of life on 31 December 2025, and PHP 8.2 reaches it on 31 December 2026. The rebuild targets PHP 8.3 or 8.4.
+6. **Retention.** Invoices must be kept seven years (ch.7), so the design never deletes invoice data. Privacy deletion requests apply to the rest.
+
+### External assumptions: verified versus not
+- **Verified in documentation (October 2026):** the Belgian B2B mandate; Billit's API has a sandbox, invoice creation, Peppol sending, status webhooks, setting a payment status, and setting or reading the invoice number; Mollie supports a Bancontact first payment that creates a SEPA direct debit mandate, a Subscriptions API, and a test API key; Ponto is a PSD2 account-information service with a free sandbox and webhooks for new transactions; the PHP end-of-life dates.
+- **Not verified:** whether Billit handles reverse-charge VAT and bank matching itself, its price, and whether a student can get sandbox access quickly; Yuki's API entirely; whether Ponto covers KBC business accounts; Mollie's fees; the MySQL 5.7 end-of-life date (from memory). Nothing is built around an unverified assumption: the spikes come first.
+- **Because LoopCasts is a case company**, accounts at the payment provider and the invoicing service can only be in test or sandbox mode. Live use is not possible, and the defence says so openly.
+
+### Alternatives considered, and why we chose what we chose
+- **Collecting payment.** (A) Online payment via Mollie: renewals can finally be automatic, access is instant, and it is easy to test, but it adds a vendor and per-transaction fees on small amounts (fees not checked). (B) Keep bank transfer, but with a structured payment reference and bank sync: no fees and closer to how customers pay today, but matching and delays remain, and it can only be tested against the bank CSV. (C) Hybrid, which is the plan. Build order: the online path first, the pay-by-invoice path only if time remains. If the provider spike fails, fall back to B.
+- **Invoicing.** (1) Delegate to Billit, the plan, because numbering, VAT and Peppol are what the service is for. (2) Build it ourselves: a database sequence for numbers, a VAT decision step and a PDF. This is a real fallback and fits the course's "decide" step, but in a real company buying beats building for legal and Peppol reasons. (3) Keep Excel, rejected. The defence can state both (1) and (2).
+- **Where the AI step goes.** Support triage, chosen. Order-email parsing was dropped once checkout exists. Fuzzy bank matching is possible but less needed with structured references. No AI is not an option because the project requires one component with a reason.
+- **Website.** Plain PHP plus a page generator, chosen. Laravel is more than a five-person company can maintain. A CMS such as WordPress is a legitimate option for the marketing pages, but it brings an update and plugin burden and would not be catalogue-driven.
+
+### Scope risk and cut order
+This is a lot for one person in twelve weeks, and only the n8n project is graded. **Core:** form, test-mode checkout, webhook, n8n, order table, invoicing sandbox, error workflow, then the AI support triage. **Secondary:** the page generator and the new design. **Later:** members-area rewrite, captions, subscription deactivation. If we fall behind, cut in this order: members area, captions, the pay-by-invoice path, the website polish. The core is never cut.
