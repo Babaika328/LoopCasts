@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LoopCasts: video courses on workflow automation</title>
+  <meta name="description" content="Video courses on n8n, APIs and AI agents. Two new videos every week.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="bar">
+    <div class="wrap bar-inner">
+      <a class="brand" href="index.html">LoopCasts</a>
+      <nav aria-label="Main">
+        <a href="#courses">Courses</a>
+        <a href="#pricing">Pricing</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <h1>Video courses for people who automate their work</h1>
+          <p class="lead">Over 50 courses on n8n, APIs and AI agents. Two new videos every week, made by a small team in Ghent.</p>
+          <a class="btn" href="#pricing">See the plans</a>
+        </div>
+
+        <svg class="loop" viewBox="0 0 360 300" role="img" aria-labelledby="loop-title">
+          <title id="loop-title">The shape of every automation: trigger, get data, decide, do, then it repeats</title>
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <g class="loop-lines" fill="none" stroke="currentColor" stroke-width="2.5" marker-end="url(#arrow)">
+            <path d="M 232 50 H 260 Q 300 50 300 90 V 126"/>
+            <path d="M 300 174 V 210 Q 300 250 260 250 H 236"/>
+            <path d="M 128 250 H 100 Q 60 250 60 210 V 174"/>
+            <path d="M 60 126 V 90 Q 60 50 100 50 H 126"/>
+          </g>
+          <g class="loop-nodes" font-size="15" font-weight="600" text-anchor="middle">
+            <rect x="128" y="30" width="104" height="40" rx="10"/><text x="180" y="55">Trigger</text>
+            <rect x="248" y="130" width="104" height="40" rx="10"/><text x="300" y="155">Get data</text>
+            <rect x="128" y="230" width="104" height="40" rx="10"/><text x="180" y="255">Decide</text>
+            <rect x="8" y="130" width="104" height="40" rx="10"/><text x="60" y="155">Do</text>
+          </g>
+          <g class="loop-note" font-size="13" text-anchor="middle">
+            <text x="180" y="144">Without a person</text>
+            <text x="180" y="164">doing each step</text>
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <section id="courses" class="wrap section">
+      <h2>Start with a single course</h2>
+      <p class="sub">A few from the catalogue. Each one is a short series you can finish in an evening.</p>
+      <ul class="courses">
+        <li><span class="c-title">n8n basics</span><span>Beginner</span><span>12 videos</span><span>1 h 20 min</span></li>
+        <li><span class="c-title">Webhooks from zero</span><span>Beginner</span><span>9 videos</span><span>55 min</span></li>
+        <li><span class="c-title">REST APIs for data people</span><span>Beginner</span><span>14 videos</span><span>1 h 45 min</span></li>
+        <li><span class="c-title">Shell scripting that saves your week</span><span>Intermediate</span><span>11 videos</span><span>1 h 10 min</span></li>
+        <li><span class="c-title">Cron and schedulers</span><span>Intermediate</span><span>7 videos</span><span>48 min</span></li>
+        <li><span class="c-title">GitHub Actions in practice</span><span>Intermediate</span><span>10 videos</span><span>1 h 5 min</span></li>
+      </ul>
+    </section>
+
+    <section id="pricing" class="wrap section">
+      <h2>Pick a plan</h2>
+      <p class="sub">All prices exclude VAT.</p>
+      <div class="plans">
+        <article class="plan">
+          <h3>Monthly</h3>
+          <p class="price">&euro;15 <span>per month</span></p>
+          <p>Access to everything. Billed every month.</p>
+          <a class="btn btn-quiet" href="order.php?plan=monthly">Order monthly</a>
+        </article>
+        <article class="plan plan-main">
+          <h3>Yearly</h3>
+          <p class="price">&euro;149 <span>per year</span></p>
+          <p>Access to everything. Saves &euro;31 compared with paying monthly.</p>
+          <a class="btn" href="order.php?plan=yearly">Order yearly</a>
+        </article>
+        <article class="plan">
+          <h3>Team licence</h3>
+          <p class="price">&euro;599 <span>per year</span></p>
+          <p>Five seats for your team.</p>
+          <a class="btn btn-quiet" href="order.php?plan=team">Order for a team</a>
+        </article>
+        <article class="plan">
+          <h3>Single course</h3>
+          <p class="price">&euro;39</p>
+          <p>Lifetime access to one course.</p>
+          <a class="btn btn-quiet" href="order.php?plan=single">Order a course</a>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap">
+      <p><strong>LoopCasts BV</strong></p>
+      <p>Fietsstraat 12 bus 2, 9000 Gent</p>
+      <p class="fine">&copy; 2026 LoopCasts BV</p>
+    </div>
+  </footer>
+</body>
+</html>
