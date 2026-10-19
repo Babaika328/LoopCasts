@@ -7,6 +7,7 @@
 
 # raw personal / financial data — not needed in the repo, keep locally
 **/*.sql
+!db/schema.sql
 **/bank/*.csv
 **/KBC export*.csv
 

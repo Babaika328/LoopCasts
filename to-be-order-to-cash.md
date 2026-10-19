@@ -15,7 +15,7 @@ flowchart TD
     p1["Payment confirmed"] --> p2["Sends the paid webhook"]
   end
   subgraph N["n8n"]
-    n1["Verifies the webhook signature"] --> n2["Saves the order, once per payment ID"]
+    n1["Asks the payment provider for the payment status"] --> n2["Saves the order, once per payment ID"]
     n2 --> n3["Checks the VAT number and picks the VAT rule"]
     n3 --> n4["Asks the invoicing service for the invoice"]
     n5["Emails the invoice to the customer"] --> n6["Creates an account task"]
@@ -65,7 +65,7 @@ The time figures are the team's own estimates from the handbook, not measurement
 Functional:
 1. The order form asks for name, email, product, company, VAT number and country, and refuses to continue when a company has no VAT number.
 2. Payment happens at the provider's hosted checkout. Card data never touches our systems.
-3. Only a verified paid webhook creates an order, and the same payment ID is processed only once.
+3. The webhook carries only a payment ID. n8n fetches the payment from the provider and acts only on the status it returns (fetch-to-confirm), so a forged webhook cannot mark anything paid. The same payment ID is processed only once.
 4. Each order has a status: paid, invoiced, account pending, account created, failed.
 5. The invoice number comes from the invoicing service and is never typed.
 6. A foreign EU business with a valid VAT number gets reverse charge. Other VAT rules are confirmed with the accountant first.
@@ -106,7 +106,7 @@ Costs still to be found in the spikes: provider fees, invoicing service price, l
 
 ## Open decisions (spikes)
 
-1. Mollie or Stripe: Bancontact, webhook signature, recurring payments in test mode.
-2. Billit or Yuki: sandbox access, reverse charge, structured reference, payment status.
+1. ~~Mollie or Stripe spike~~ Replaced by an internal payment simulator (see `pre-build-plan.md`, section "Decision: internal test services").
+2. ~~Billit or Yuki spike~~ Replaced by our own invoice step: a database counter, an explicit VAT rule and a PDF.
 3. The VAT rule for private customers abroad, to be confirmed with the accountant.
 4. Whether account confirmation stays human after the members-area rewrite.

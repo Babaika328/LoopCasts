@@ -1,24 +1,15 @@
 <?php
 declare(strict_types=1);
 
-// Order page. For now it only checks the details; payment is connected in the next step.
+// Order page. A valid form creates a payment at the (simulated) provider and sends the customer to its checkout.
+// The order itself is NOT created here: n8n creates it after the provider confirms the payment.
+require __DIR__ . '/lib/bootstrap.php';
+require __DIR__ . '/lib/shop.php';
+require __DIR__ . '/lib/payments.php';
 
-$plans = [
-    'monthly' => ['name' => 'Monthly',       'price' => '€15 per month', 'note' => 'Access to everything. Billed every month.'],
-    'yearly'  => ['name' => 'Yearly',        'price' => '€149 per year', 'note' => 'Access to everything.'],
-    'team'    => ['name' => 'Team licence',  'price' => '€599 per year', 'note' => 'Five seats. After payment you send us the five names.'],
-    'single'  => ['name' => 'Single course', 'price' => '€39',           'note' => 'Lifetime access to one course.'],
-];
-$courses = [
-    'n8n basics', 'Webhooks from zero', 'REST APIs for data people',
-    'Shell scripting that saves your week', 'Cron and schedulers', 'GitHub Actions in practice',
-];
-$countries = [
-    'BE' => 'Belgium', 'NL' => 'Netherlands', 'FR' => 'France', 'DE' => 'Germany',
-    'LU' => 'Luxembourg', 'IT' => 'Italy', 'ES' => 'Spain', 'IE' => 'Ireland',
-];
-
-function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+$plans = PLANS;
+$courses = COURSES;
+$countries = COUNTRIES;
 
 $planKey = (string)($_POST['plan'] ?? $_GET['plan'] ?? 'yearly');
 if (!isset($plans[$planKey])) { $planKey = 'yearly'; }
@@ -26,7 +17,6 @@ $plan = $plans[$planKey];
 
 $v = ['name' => '', 'email' => '', 'is_company' => '', 'company' => '', 'vat' => '', 'country' => 'BE', 'course' => ''];
 $errors = [];
-$done = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach ($v as $k => $_) { $v[$k] = trim((string)($_POST[$k] ?? '')); }
@@ -47,7 +37,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $v['vat'] = $vat;
         }
     }
-    $done = $errors === [];
+
+    if ($errors === []) {
+        $isCompany = $v['is_company'] === '1';
+        $rule = vat_rule($v['country'], $isCompany, $isCompany ? $v['vat'] : '');
+        $excl = $plan['cents'];
+        $vatCents = vat_cents($excl, $rule);
+        $description = $plan['name'] . ($planKey === 'single' ? ': ' . $v['course'] : '');
+        $id = create_payment($excl + $vatCents, $description, [
+            'plan' => $planKey,
+            'course' => $planKey === 'single' ? $v['course'] : null,
+            'name' => $v['name'],
+            'email' => $v['email'],
+            'company' => $isCompany ? $v['company'] : null,
+            'vat_number' => $isCompany ? $v['vat'] : null,
+            'country' => $v['country'],
+            'amount_excl_cents' => $excl,
+            'vat_cents' => $vatCents,
+            'vat_rule' => $rule,
+        ]);
+        header('Location: /pay/checkout.php?id=' . $id);
+        exit;
+    }
 }
 
 function field_attrs(array $errors, string $key): string {
@@ -78,26 +89,6 @@ function field_error(array $errors, string $key): string {
   </header>
 
   <main id="main" class="wrap narrow section">
-<?php if ($done): ?>
-    <h1 class="h1-small">Your details look good</h1>
-    <div class="summary">
-      <h2><?= e($plan['name']) ?>, <?= e($plan['price']) ?></h2>
-      <dl class="facts">
-        <dt>Name</dt><dd><?= e($v['name']) ?></dd>
-        <dt>Email</dt><dd><?= e($v['email']) ?></dd>
-        <?php if ($v['is_company'] === '1'): ?>
-        <dt>Company</dt><dd><?= e($v['company']) ?></dd>
-        <dt>VAT number</dt><dd><?= e($v['vat']) ?></dd>
-        <?php endif; ?>
-        <dt>Country</dt><dd><?= e($countries[$v['country']]) ?></dd>
-        <?php if ($planKey === 'single'): ?>
-        <dt>Course</dt><dd><?= e($v['course']) ?></dd>
-        <?php endif; ?>
-      </dl>
-    </div>
-    <p class="notice">Development version: nothing has been saved and no payment was taken. The payment step is connected next.</p>
-    <p><a href="index.html#pricing">Back to the plans</a></p>
-<?php else: ?>
     <h1 class="h1-small">Order: <?= e($plan['name']) ?></h1>
     <p class="sub"><?= e($plan['price']) ?>, excluding VAT. <?= e($plan['note']) ?></p>
 
@@ -176,7 +167,6 @@ function field_error(array $errors, string $key): string {
         sync();
       })();
     </script>
-<?php endif; ?>
   </main>
 
   <footer class="foot">
