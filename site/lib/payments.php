@@ -8,7 +8,7 @@ declare(strict_types=1);
 function create_payment(int $amountCents, string $description, array $metadata): string
 {
     $id = 'tr_test_' . bin2hex(random_bytes(6));
-    $webhook = getenv('PAYMENT_WEBHOOK_URL') ?: 'http://host.docker.internal:5678/webhook/payment';
+    $webhook = getenv('PAYMENT_WEBHOOK_URL') ?: 'http://n8n:5678/webhook/payment';
     $st = db()->prepare(
         'INSERT INTO payments (id, amount_cents, description, metadata, webhook_url, redirect_url)
          VALUES (:id, :amount, :descr, :meta, :hook, :redirect)'
