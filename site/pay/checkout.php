@@ -13,8 +13,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $p['status'] === 'open') {
     $map = ['pay' => 'paid', 'fail' => 'failed', 'cancel' => 'canceled'];
     $action = (string)($_POST['action'] ?? '');
     if (isset($map[$action])) {
-        $st = db()->prepare('UPDATE payments SET status = :s, paid_at = IF(:s2 = "paid", NOW(), NULL) WHERE id = :id AND status = "open"');
-        $st->execute([':s' => $map[$action], ':s2' => $map[$action], ':id' => $id]);
+        // No text is compared with text inside SQL (that caused a collation error on MariaDB 11.8).
+        $status = $map[$action];
+        $st = db()->prepare('UPDATE payments SET status = :s, paid_at = :paid WHERE id = :id AND status = :open');
+        $st->execute([
+            ':s' => $status,
+            ':paid' => $status === 'paid' ? date('Y-m-d H:i:s') : null,
+            ':id' => $id,
+            ':open' => 'open',
+        ]);
         $times = !empty($_POST['twice']) ? 2 : 1;      // test option: deliver the webhook twice
         $result = [];
         for ($i = 0; $i < $times; $i++) { $result[] = send_webhook($p['webhook_url'], $id); }
