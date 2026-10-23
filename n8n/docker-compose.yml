@@ -2,13 +2,14 @@
 # It joins DDEV's network (ddev_default) so that:
 #  - DDEV's web container can reach it as http://n8n:5678   (the payment webhook)
 #  - n8n can reach the site as http://ddev-loopcasts-web   (the payment API)
-#  - n8n can reach the database as ddev-loopcasts-db:3306
+#  - n8n can reach the database as ddev-loopcasts-db:3306 (the database is only on the project network,
+#    so n8n joins that one too)
 # Start DDEV first (`ddev start` in the project folder), then `docker compose up -d` here.
 name: loopcasts-n8n
 
 services:
   n8n:
-    image: docker.n8n.io/n8nio/n8n:latest      # pin a version tag once it works (see README)
+    image: docker.n8n.io/n8nio/n8n:2.43.8      # pinned to the version we built and tested with; update on purpose, not by accident
     container_name: n8n
     restart: unless-stopped
     ports:
@@ -21,9 +22,12 @@ services:
       - n8n_data:/home/node/.n8n                 # workflows, credentials and executions live here
     networks:
       - ddev_default
+      - ddev-loopcasts_default
 
 networks:
   ddev_default:
+    external: true
+  ddev-loopcasts_default:
     external: true
 
 volumes:

@@ -1,0 +1,228 @@
+{
+  "name": "Payment paid to order",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "payment",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -544,
+        -32
+      ],
+      "id": "a51ad683-5208-4208-baf0-176d2f907cd3",
+      "name": "Webhook",
+      "webhookId": "21dca78d-7d13-4907-8e66-017a5a1f8268"
+    },
+    {
+      "parameters": {
+        "url": "http://ddev-loopcasts-web/pay/api.php",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{ $json.body.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -304,
+        -32
+      ],
+      "id": "3c431149-6344-439f-bde5-d38141011171",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7FR2vQfWz99cAhlt",
+          "name": "Payment simulator"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2e16b1c3-cbeb-411c-ac72-1c051e3b9e7a",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "paid",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -80,
+        -32
+      ],
+      "id": "105c361f-bc5e-4c1e-ad61-aa6cc4c2bbbf",
+      "name": "If"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        144,
+        192
+      ],
+      "id": "1b447034-e8ec-4b2d-93c2-871f93e2fc17",
+      "name": "Ignore: not paid"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $input.first().json;\nconst m = p.metadata;\n\n// What the provider says was paid, in cents.\nconst paid = Math.round(parseFloat(p.amount.value) * 100);\n\n// Work out the VAT rule again, independently of the website.\nconst isCompany = !!m.company;\nconst rule = (isCompany && m.vat_number && m.country !== 'BE') ? 'reverse_charge' : 'belgian_21';\nconst vat = rule === 'reverse_charge' ? 0 : Math.floor((m.amount_excl_cents * 21 + 50) / 100);\nconst expected = m.amount_excl_cents + vat;\n\nif (rule !== m.vat_rule || vat !== m.vat_cents || paid !== expected) {\n  throw new Error(`Amount check failed for ${p.id}: paid ${paid}, expected ${expected} (${rule})`);\n}\n\nreturn [{ json: {\n  payment_id: p.id,\n  plan: m.plan,\n  course: m.course,\n  name: m.name,\n  email: m.email,\n  company: m.company,\n  vat_number: m.vat_number,\n  country: m.country,\n  amount_excl_cents: m.amount_excl_cents,\n  vat_cents: vat,\n  vat_rule: rule,\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        -208
+      ],
+      "id": "e129bad8-8f7d-49ac-9591-cf225fceb5cf",
+      "name": "Check amount and VAT"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "table": {
+          "__rl": true,
+          "value": "orders",
+          "mode": "list",
+          "cachedResultName": "orders"
+        },
+        "columnToMatchOn": "payment_id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        336,
+        -208
+      ],
+      "id": "eaaea121-b9f2-4db1-98ef-3f239bcf5c67",
+      "name": "Insert or update rows in a table",
+      "credentials": {
+        "mySql": {
+          "id": "q7Er3R4tW6F4rkkq",
+          "name": "MySQL account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "localhost:5678",
+            "user-agent": "curl/8.5.0",
+            "accept": "*/*",
+            "content-length": "23",
+            "content-type": "application/x-www-form-urlencoded"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "id": "tr_test_d66496d78116"
+          },
+          "webhookUrl": "http://localhost:5678/webhook-test/payment",
+          "executionMode": "test"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Check amount and VAT",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ignore: not paid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check amount and VAT": {
+      "main": [
+        [
+          {
+            "node": "Insert or update rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "195093e6-9a3c-4447-99d3-b78b0c648047",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e9b712e3550050860bdc403941d6b87a4c667109ab3b9095c88c7aed534302cc"
+  },
+  "nodeGroups": [],
+  "id": "90JL9YiDaKkW7O8L",
+  "tags": []
+}
