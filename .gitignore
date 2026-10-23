@@ -21,6 +21,9 @@
 **/newsletter list MASTER.xlsx
 **/vimeo export*.csv
 
+# database backups hold data
+backups/
+
 # local tooling
 node_modules/
 .DS_Store

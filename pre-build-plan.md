@@ -171,4 +171,22 @@ Opening a payment or invoicing account for LoopCasts would mean entering company
 - Peppol, legal invoice wording and an accounting link are not covered. In a real company we would buy an invoicing service for exactly this, and the defence says so.
 - The Mollie facts used in the design (Bancontact first payment creating a SEPA direct debit mandate, the Subscriptions API, id-only unsigned webhooks) come from documentation and articles, not from running them.
 
+**Honest statement for the defence:** "LoopCasts is a case company, so I could not open live accounts. I built a simulator that follows Mollie's documented behaviour, and the workflow only depends on that contract."
+
 **Build order from here:** database schema, then the simulator (create payment, test checkout, webhook), then n8n (webhook, fetch, write order), then the invoice step and email, then the error workflow.
+
+## PHP2Shell (21 October 2026): what changed
+
+On 21 October 2026 PHP published emergency releases (8.5.12, 8.4.27, 8.3.36, 8.2.35) for two critical flaws, CVE-2026-109618 and CVE-2026-109619 ("PHP2Shell"). They allow remote code execution without logging in, they were being exploited before the fix, and PHP says there is no complete mitigation: updating is the only safe choice. PHP 8.1 and older are end of life and get no official fix. This arrived after the choice of PHP was made, and it deserves a straight answer.
+
+**For the case company:** the live site's PHP is 8.1 (the database dump header says 8.1.27). That makes it the most urgent item in the whole analysis, above everything in the opportunity log: move the host to a patched version, or take the PHP pages offline until then. Nobody at LoopCasts tracks PHP versions, which is why a version that ended in December 2025 was still running. It is also the strongest argument so far for the members-area rewrite on a supported version.
+
+**For our build:**
+- Local DDEV: check `ddev exec php -v` and update DDEV until the container PHP is at least 8.3.36 or 8.4.27. The site is local only. Do not share it publicly (ngrok, `ddev share`) until it is patched.
+- Target PHP 8.4. PHP 8.3 gets security fixes until the end of 2027 and 8.4 until the end of 2028 (dates to be confirmed on php.net/supported-versions).
+- Keep the PHP surface small. The 54 marketing pages will be generated as static files, and a static page needs no PHP at all. PHP stays only where it has to: the order form, the test checkout and the members area. The real logic lives in n8n, which is not PHP.
+- No language is immune. Python and Node runtimes publish critical fixes too, so switching language would only trade one patching duty for another. What protects a small company is patching quickly and having fewer moving parts.
+
+**Defence answer to "why PHP?":** the company already runs PHP, our PHP layer is thin, and the lesson of PHP2Shell is patch discipline, not language choice.
+
+**Candidate for later:** a scheduled n8n check that compares the host's PHP version with the supported and patched versions and alerts a human. It answers a real gap (nobody watches versions) and uses the time-based trigger from week 4. Not in scope unless time remains.

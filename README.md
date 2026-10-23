@@ -27,11 +27,22 @@ the Vimeo export, the bank export) and anything secret (passwords file, DB crede
 the SQL dump) are excluded via `.gitignore`. Reasons are in the plan doc and in
 `.gitignore` itself. Keep that data locally, not in git.
 
-## Setup
+## Quick start
 
-- Local dev: `ddev` (Docker-based, matches the course's standard setup).
-- `.env` holds secrets locally, never committed — copy `.env.example` once it exists
-  and fill in your own values.
+Needs Docker Desktop running, plus WSL2/Ubuntu with DDEV (see `pre-build-plan.md`). From the project folder in Ubuntu:
+
+```bash
+bash start.sh        # starts the site, database and n8n, then checks that all of it answers
+bash check.sh        # OK / FAIL for every part, exit code 1 if something is down
+bash stop.sh         # stops everything, data is kept
+bash backup.sh       # dumps the database and proves the dump can be restored
+bash reset-demo.sh   # clears the test data before a demo (asks first)
+```
+
+- Site: https://loopcasts.ddev.site
+- n8n: http://localhost:5678
+- Database schema: `db/schema.sql`, load with `ddev mysql < db/schema.sql`
+- `.env` files hold secrets locally and are never committed. Copy `.env.example` (root) and `n8n/.env.example` and fill in your own values.
 
 ## Where to start
 
