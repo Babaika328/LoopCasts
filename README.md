@@ -34,6 +34,7 @@ Needs Docker Desktop running, plus WSL2/Ubuntu with DDEV (see `pre-build-plan.md
 ```bash
 bash start.sh        # starts the site, database and n8n, then checks that all of it answers
 bash check.sh        # OK / FAIL for every part, exit code 1 if something is down
+bash test.sh         # automatic tests: form, payment, webhook, order table (--fast skips the n8n ones)
 bash stop.sh         # stops everything, data is kept
 bash backup.sh       # dumps the database and proves the dump can be restored
 bash reset-demo.sh   # clears the test data before a demo (asks first)
