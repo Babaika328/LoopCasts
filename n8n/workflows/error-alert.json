@@ -1,0 +1,67 @@
+{
+  "name": "Error alert",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8cffeacc-6d10-4340-a306-e1d1c2d7aa90",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "fromEmail": "n8n@loopcasts.test",
+        "toEmail": "alerts@loopcasts.test",
+        "subject": "=[LoopCasts] Workflow failed: {{ $json.workflow.name }}",
+        "html": "=<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n</head>\n<body style=\"margin:0;padding:0;background-color:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#1e293b;\">\n\n  <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background-color:#f1f5f9;padding:32px 12px;\">\n    <tr>\n      <td align=\"center\">\n\n        <table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%;max-width:600px;background-color:#ffffff;border-radius:12px;overflow:hidden;\">\n\n          <tr>\n            <td style=\"background-color:#111827;padding:26px 30px;\">\n              <div style=\"font-size:12px;font-weight:bold;letter-spacing:2px;color:#94a3b8;\">LOOPCASTS / AUTOMATION</div>\n              <div style=\"font-size:24px;font-weight:bold;color:#ffffff;margin-top:12px;\">Workflow Alert</div>\n              <div style=\"font-size:14px;color:#cbd5e1;margin-top:6px;\">An automation workflow has failed.</div>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"padding:24px 30px 8px;\">\n              <span style=\"display:inline-block;background-color:#fee2e2;color:#b91c1c;padding:7px 12px;border-radius:20px;font-size:12px;font-weight:bold;\">\n                &#10005; EXECUTION FAILED\n              </span>\n              <h1 style=\"font-size:21px;line-height:1.4;margin:18px 0 8px;color:#111827;\">\n                {{ $json.workflow.name }}\n              </h1>\n              <p style=\"font-size:14px;line-height:1.7;color:#64748b;margin:0;\">\n                The workflow stopped because an error occurred. Review the details below to investigate the issue.\n              </p>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"padding:20px 30px;\">\n              <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;\">\n                <tr>\n                  <td style=\"padding:15px 16px;border-bottom:1px solid #e2e8f0;\">\n                    <div style=\"font-size:11px;font-weight:bold;letter-spacing:1px;color:#64748b;text-transform:uppercase;\">Workflow</div>\n                    <div style=\"font-size:14px;font-weight:bold;color:#0f172a;margin-top:6px;word-break:break-word;\">{{ $json.workflow.name }}</div>\n                  </td>\n                </tr>\n                <tr>\n                  <td style=\"padding:15px 16px;border-bottom:1px solid #e2e8f0;\">\n                    <div style=\"font-size:11px;font-weight:bold;letter-spacing:1px;color:#64748b;text-transform:uppercase;\">Failed node</div>\n                    <div style=\"font-size:14px;color:#0f172a;margin-top:6px;word-break:break-word;\">{{ $json.execution.lastNodeExecuted }}</div>\n                  </td>\n                </tr>\n                <tr>\n                  <td style=\"padding:15px 16px;\">\n                    <div style=\"font-size:11px;font-weight:bold;letter-spacing:1px;color:#64748b;text-transform:uppercase;\">Error message</div>\n                    <div style=\"font-size:14px;line-height:1.7;color:#b91c1c;margin-top:8px;word-break:break-word;\">{{ $json.execution.error.message }}</div>\n                  </td>\n                </tr>\n              </table>\n            </td>\n          </tr>\n\n          <tr>\n            <td align=\"center\" style=\"padding:0 30px 30px;\">\n              <a href=\"{{ $json.execution.url }}\" style=\"display:inline-block;background-color:#ea580c;color:#ffffff;text-decoration:none;font-size:14px;font-weight:bold;padding:14px 24px;border-radius:7px;\">\n                View Execution &rarr;\n              </a>\n              <p style=\"font-size:12px;line-height:1.6;color:#94a3b8;margin:18px 0 0;\">\n                Open the execution in n8n to inspect the logs and troubleshoot the failure.\n              </p>\n            </td>\n          </tr>\n\n          <tr>\n            <td style=\"background-color:#f8fafc;border-top:1px solid #e2e8f0;padding:18px 30px;text-align:center;\">\n              <div style=\"font-size:12px;color:#64748b;\">Automated notification from <strong style=\"color:#334155;\">LoopCasts</strong></div>\n              <div style=\"font-size:11px;color:#94a3b8;margin-top:5px;\">Powered by n8n</div>\n            </td>\n          </tr>\n\n        </table>\n\n      </td>\n    </tr>\n  </table>\n\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "f6c94a28-d3a0-4d2b-91d0-70a600ea4714",
+      "name": "Send an Email",
+      "webhookId": "b57f4eed-5a03-46f6-9982-4f23551b5eed",
+      "credentials": {
+        "smtp": {
+          "id": "FpFyxe16tvRgDxeN",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3719dac3-bccc-4fb0-bac1-421472454c20",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e9b712e3550050860bdc403941d6b87a4c667109ab3b9095c88c7aed534302cc"
+  },
+  "nodeGroups": [],
+  "id": "9c9J6sdTjYE8eAMi",
+  "tags": []
+}
