@@ -40,14 +40,8 @@ CREATE TABLE IF NOT EXISTS orders (
   KEY idx_orders_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Gap-free invoice numbering: one counter row per year, increased inside a transaction:
---   START TRANSACTION;
---   INSERT INTO invoice_counters (year, last_number) VALUES (2026, 0) ON DUPLICATE KEY UPDATE year = year;
---   SELECT last_number FROM invoice_counters WHERE year = 2026 FOR UPDATE;
---   UPDATE invoice_counters SET last_number = last_number + 1 WHERE year = 2026;
---   ... insert the invoice with number CONCAT('2026-', LPAD(new_number, 4, '0')) ...
---   COMMIT;
--- Two people (or two workflows) can never get the same number, which is what went wrong in February.
+-- Gap-free invoice numbering. The number is handed out by the procedure create_invoice() below, inside one
+-- transaction, so two people (or two workflows) can never get the same number, which is what went wrong in February.
 CREATE TABLE IF NOT EXISTS invoice_counters (
   year         SMALLINT UNSIGNED NOT NULL PRIMARY KEY,
   last_number  INT UNSIGNED NOT NULL DEFAULT 0
@@ -62,3 +56,43 @@ CREATE TABLE IF NOT EXISTS invoices (
   UNIQUE KEY uq_invoices_order (order_id),
   CONSTRAINT fk_invoices_order FOREIGN KEY (order_id) REFERENCES orders (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- create_invoice(order_id, year): gives an order its invoice number, exactly once.
+--  * locks the order row first, so two runs for the same order take turns (the second one just gets the same number back)
+--  * locks the counter row of that year, so two different orders take turns (numbers are unique and have no gaps)
+--  * if anything fails, everything is rolled back and the counter does not move
+-- Returns one row: invoice_number. Reload this file at any time, CREATE OR REPLACE updates it.
+DELIMITER //
+CREATE OR REPLACE PROCEDURE create_invoice(IN p_order_id INT UNSIGNED, IN p_year SMALLINT UNSIGNED)
+BEGIN
+  DECLARE v_total  INT UNSIGNED DEFAULT NULL;
+  DECLARE v_number VARCHAR(12)  DEFAULT NULL;
+  DECLARE v_next   INT UNSIGNED;
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN
+    ROLLBACK;
+    RESIGNAL;
+  END;
+
+  START TRANSACTION;
+
+  SELECT amount_excl_cents + vat_cents INTO v_total FROM orders WHERE id = p_order_id FOR UPDATE;
+  IF v_total IS NULL THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Order not found';
+  END IF;
+
+  SET v_number = (SELECT invoice_number FROM invoices WHERE order_id = p_order_id);
+  IF v_number IS NULL THEN
+    INSERT INTO invoice_counters (year, last_number) VALUES (p_year, 0) ON DUPLICATE KEY UPDATE year = year;
+    SELECT last_number + 1 INTO v_next FROM invoice_counters WHERE year = p_year FOR UPDATE;
+    UPDATE invoice_counters SET last_number = v_next WHERE year = p_year;
+    SET v_number = CONCAT(p_year, '-', LPAD(v_next, 4, '0'));
+    INSERT INTO invoices (invoice_number, order_id, issued_on, total_cents)
+      VALUES (v_number, p_order_id, CURDATE(), v_total);
+    UPDATE orders SET status = 'invoiced' WHERE id = p_order_id AND status = 'paid';
+  END IF;
+
+  COMMIT;
+  SELECT v_number AS invoice_number;
+END//
+DELIMITER ;

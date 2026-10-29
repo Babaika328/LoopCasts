@@ -1,9 +1,10 @@
 """The full path: form, payment, webhook, n8n, order table. Needs n8n with the workflow ACTIVE."""
+import re
 import time
 
 import pytest
 
-from conftest import (api_payment, db, new_payment, order_count, pay, post_webhook, wait_for_orders)
+from conftest import (api_payment, db, new_payment, order_count, pay, post_webhook, scalar, wait_for_orders)
 
 pytestmark = pytest.mark.n8n
 HINT = "Is n8n running and is the workflow 'Payment paid to order' active (Publish)?"
@@ -14,7 +15,21 @@ def test_paid_payment_becomes_exactly_one_order():
     pay(pid, "pay")
     assert wait_for_orders(pid, 1) == 1, "No order appeared. " + HINT
     row = db(f"SELECT plan, email, vat_rule, status, amount_excl_cents, vat_cents FROM orders WHERE payment_id='{pid}'")[0].split("\t")
-    assert row == ["yearly", email, "belgian_21", "paid", "14900", "3129"]
+    assert row[:3] == ["yearly", email, "belgian_21"] and row[3] in ("paid", "invoiced") and row[4:] == ["14900", "3129"]
+
+
+def test_a_paid_order_gets_exactly_one_invoice_number():
+    pid, _ = new_payment()
+    pay(pid, "pay")
+    assert wait_for_orders(pid, 1) == 1, "No order appeared. " + HINT
+    sql = f"SELECT invoice_number FROM invoices WHERE order_id = (SELECT id FROM orders WHERE payment_id='{pid}')"
+    deadline = time.time() + 20
+    rows = db(sql)
+    while not rows and time.time() < deadline:
+        time.sleep(1)
+        rows = db(sql)
+    assert len(rows) == 1 and re.match(r"^\d{4}-\d{4}$", rows[0]), "No invoice number appeared. Did you add the invoice nodes to the workflow?"
+    assert scalar(f"SELECT status FROM orders WHERE payment_id='{pid}'") == "invoiced"
 
 
 def test_foreign_company_order_is_stored_with_reverse_charge():
@@ -38,8 +53,9 @@ def test_webhook_delivered_twice_creates_one_order():
     pid, _ = new_payment()
     pay(pid, "pay", twice=True)
     assert wait_for_orders(pid, 1) == 1, "No order appeared. " + HINT
-    time.sleep(4)
+    time.sleep(6)
     assert order_count(pid) == 1
+    assert int(scalar(f"SELECT COUNT(*) FROM invoices WHERE order_id = (SELECT id FROM orders WHERE payment_id='{pid}')")) <= 1
 
 
 @pytest.mark.parametrize("action", ["fail", "cancel"])

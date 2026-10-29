@@ -131,3 +131,8 @@ def clean_up_test_data():
     db(f"DELETE i FROM invoices i JOIN orders o ON o.id = i.order_id WHERE o.email LIKE '{MARK}%'")
     db(f"DELETE FROM orders WHERE email LIKE '{MARK}%'")
     db(f"DELETE FROM payments WHERE metadata LIKE '%{MARK}%'")
+    db("DELETE FROM invoice_counters WHERE year = 9999")
+    # Test orders may have used real numbers of this year. Give the counter back, so the real numbers stay gap-free.
+    db("UPDATE invoice_counters c SET c.last_number = ("
+       "SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_number, 6) AS UNSIGNED)), 0) FROM invoices "
+       "WHERE invoice_number LIKE CONCAT(c.year, '-%'))")
