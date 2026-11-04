@@ -57,6 +57,10 @@ CREATE TABLE IF NOT EXISTS invoices (
   CONSTRAINT fk_invoices_order FOREIGN KEY (order_id) REFERENCES orders (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- When the invoice email was claimed for sending. The workflow claims it with one UPDATE ... WHERE emailed_at IS NULL,
+-- so if the webhook arrives twice, only one run gets to send the email.
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS emailed_at DATETIME NULL;
+
 -- create_invoice(order_id, year): gives an order its invoice number, exactly once.
 --  * locks the order row first, so two runs for the same order take turns (the second one just gets the same number back)
 --  * locks the counter row of that year, so two different orders take turns (numbers are unique and have no gaps)
@@ -74,6 +78,10 @@ BEGIN
     RESIGNAL;
   END;
 
+  -- Make sure the counter row of this year exists. This is its own instant step, before the transaction:
+  -- creating it inside the transaction made two callers hold a read lock and both wait for a write lock (a deadlock).
+  INSERT IGNORE INTO invoice_counters (year, last_number) VALUES (p_year, 0);
+
   START TRANSACTION;
 
   SELECT amount_excl_cents + vat_cents INTO v_total FROM orders WHERE id = p_order_id FOR UPDATE;
@@ -83,7 +91,6 @@ BEGIN
 
   SET v_number = (SELECT invoice_number FROM invoices WHERE order_id = p_order_id);
   IF v_number IS NULL THEN
-    INSERT INTO invoice_counters (year, last_number) VALUES (p_year, 0) ON DUPLICATE KEY UPDATE year = year;
     SELECT last_number + 1 INTO v_next FROM invoice_counters WHERE year = p_year FOR UPDATE;
     UPDATE invoice_counters SET last_number = v_next WHERE year = p_year;
     SET v_number = CONCAT(p_year, '-', LPAD(v_next, 4, '0'));

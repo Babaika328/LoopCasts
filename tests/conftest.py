@@ -125,6 +125,21 @@ def wait_for_orders(pid, expected, timeout=20):
     return count
 
 
+def mailpit_subjects():
+    """Subjects of the latest mails in Mailpit (DDEV's mail catcher), newest first. Skips the test if Mailpit cannot be asked."""
+    result = _run(["ddev", "exec", shlex.join(["curl", "-s", "http://localhost:8025/api/v1/messages?limit=200"])])
+    try:
+        messages = json.loads(result.stdout)["messages"]
+        return [str(m.get("Subject") or m.get("subject") or "") for m in messages]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        pytest.skip("Mailpit could not be asked (check the port with: ddev describe)")
+
+
+def mailpit_count(text):
+    """How many of the latest mails have `text` in their subject."""
+    return sum(1 for subject in mailpit_subjects() if text in subject)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def clean_up_test_data():
     yield

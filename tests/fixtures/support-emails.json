@@ -1,0 +1,182 @@
+[
+ {
+  "id": 175,
+  "from": "noor.cools@cools-analytics.example",
+  "subject": "password reset",
+  "body": "\n\nHello, new laptop, password gone. Can you reset it? My account is under noor.cools@cools-analytics.example.\n\nThanks,\nNoor",
+  "expected_category": "login_access",
+  "expected_needs_human": false,
+  "subject_misleading": false
+ },
+ {
+  "id": 84,
+  "from": "chloe21@post.example",
+  "subject": "Paid but no login",
+  "body": "Hi,\n\nI transferred the money last week and heard nothing. Is everything OK?\n\nBest,\nChloe21",
+  "expected_category": "order_status",
+  "expected_needs_human": false,
+  "subject_misleading": true
+ },
+ {
+  "id": 317,
+  "from": "jan@mintflow.example",
+  "subject": "Where is my access?",
+  "body": "Hello,\n\nI transferred the money last week and heard nothing. Is everything OK?\n\nKind regards,\nJan",
+  "expected_category": "order_status",
+  "expected_needs_human": false,
+  "subject_misleading": true
+ },
+ {
+  "id": 82,
+  "from": "m.pauwels@pauwels-systems.example",
+  "subject": "Invoice with VAT number",
+  "body": "\n\nCould you send me a copy of my invoice? Our accounting needs it.\n\nBest,\nM",
+  "expected_category": "invoice_request",
+  "expected_needs_human": false,
+  "subject_misleading": false
+ },
+ {
+  "id": 53,
+  "from": "anouk@van-damme-data.example",
+  "subject": "PO number on invoice",
+  "body": "Hi Lotte,\n\nDag, kan ik een kopie van de factuur krijgen voor mijn boekhouder?\n\nKind regards,\nAnouk",
+  "expected_category": "invoice_request",
+  "expected_needs_human": false,
+  "subject_misleading": false
+ },
+ {
+  "id": 229,
+  "from": "j.de.smet@example.com",
+  "subject": "Copy of invoice",
+  "body": "Hi Lotte,\n\nThe invoice does not show our VAT number. Can you add it and send a new one? Number: be0314665218\n\nThanks,\nJ",
+  "expected_category": "invoice_request",
+  "expected_needs_human": true,
+  "subject_misleading": false
+ },
+ {
+  "id": 149,
+  "from": "lucia@rossi-labs.example",
+  "subject": "Order status",
+  "body": "Hi Lotte,\n\nHello, payment was done three days ago (invoice 2026-0264). Could you check? I wanted to start the course this week.\n\nBest,\nLucia",
+  "expected_category": "order_status",
+  "expected_needs_human": false,
+  "subject_misleading": false
+ },
+ {
+  "id": 29,
+  "from": "laura44@example.com",
+  "subject": "Error in lesson 4",
+  "body": "Hello,\n\nIn lesson 4 of 'n8n error handling' the Error Trigger node looks different in my version (1.6x). Is the video outdated?\n\nCheers,\nLaura44",
+  "expected_category": "content_question",
+  "expected_needs_human": false,
+  "subject_misleading": false
+ },
+ {
+  "id": 436,
+  "from": "thijs@pixelworks.example",
+  "subject": "In which video...?",
+  "body": "Hi Lotte,\n\nIn which video does Marieke explain the retry setting on the HTTP node? I can't find it back.\n\nKind regards,\nThijs",
+  "expected_category": "content_question",
+  "expected_needs_human": false,
+  "subject_misleading": false
+ },
+ {
+  "id": 39,
+  "from": "jan@willems-data.example",
+  "subject": "Video problem",
+  "body": "\n\nThe videos don't play at work, I only see a grey box. At home it is fine.\n\nMvg,\nJan",
+  "expected_category": "video_problem",
+  "expected_needs_human": false,
+  "subject_misleading": false
+ },
+ {
+  "id": 124,
+  "from": "wout73@post.example",
+  "subject": "black screen",
+  "body": "Hello,\n\nThe videos don't play at work, I only see a grey box. At home it is fine.\n\nKind regards,\nWout73",
+  "expected_category": "video_problem",
+  "expected_needs_human": false,
+  "subject_misleading": false
+ },
+ {
+  "id": 137,
+  "from": "wout.coppens@post.example",
+  "subject": "team licence seat",
+  "body": "Hello,\n\nWe have a new colleague, Stijn Vandenberghe. We still had a free seat I think? Mail: stijn@post.example\n\nThanks,\nWout",
+  "expected_category": "team_seats",
+  "expected_needs_human": false,
+  "subject_misleading": false
+ },
+ {
+  "id": 372,
+  "from": "lea97@example.com",
+  "subject": "New colleague",
+  "body": "Dear LoopCasts,\n\nJulie Smets left our company. Can you give the seat to Fatima Thys (fatima@example.com)?\n\nBest,\nLea97",
+  "expected_category": "team_seats",
+  "expected_needs_human": false,
+  "subject_misleading": false
+ },
+ {
+  "id": 469,
+  "from": "sarah.segers@mail.example",
+  "subject": "Refund?",
+  "body": "Dear LoopCasts,\n\nPlease stop my subscription. I changed jobs.\n\nCheers,\nSarah",
+  "expected_category": "cancel_or_refund",
+  "expected_needs_human": true,
+  "subject_misleading": true
+ },
+ {
+  "id": 433,
+  "from": "j.segers@mail.example",
+  "subject": "Stop my subscription",
+  "body": "Hi,\n\nPlease stop my subscription. I changed jobs.\n\nMvg,\nJ",
+  "expected_category": "cancel_or_refund",
+  "expected_needs_human": true,
+  "subject_misleading": false
+ },
+ {
+  "id": 380,
+  "from": "ruben.bogaert@bogaert-studio.example",
+  "subject": "Idea",
+  "body": "Hello,\n\nAre you planning something about self-hosting n8n on Kubernetes?\n\nMvg,\nRuben",
+  "expected_category": "idea_or_partnership",
+  "expected_needs_human": false,
+  "subject_misleading": false
+ },
+ {
+  "id": 97,
+  "from": "sofie.van.den.broeck@post.example",
+  "subject": "Partnership",
+  "body": "Hello,\n\nI'm a student in Ghent. Do you have a student discount?\n\nThanks,\nSofie",
+  "expected_category": "other",
+  "expected_needs_human": true,
+  "subject_misleading": true
+ },
+ {
+  "id": 497,
+  "from": "billing@loopcasts-payments.example",
+  "subject": "URGENT invoice overdue - legal action",
+  "body": "Dear customer,\n\nYour hosting invoice is overdue. Pay within 24h via the link below or your website will be suspended.\n\nhttp://loopcasts-payments.example/pay\n\nBilling department",
+  "expected_category": "scam_or_spam",
+  "expected_needs_human": true,
+  "subject_misleading": false
+ },
+ {
+  "id": 398,
+  "from": "fatima24@yilmaz-automatisering.example",
+  "subject": "Quick question",
+  "body": "\n\nHi Marieke, great talk last week! Could you do a workshop at our company? About 12 people.\n\nKind regards,\nFatima24",
+  "expected_category": "idea_or_partnership",
+  "expected_needs_human": true,
+  "subject_misleading": true
+ },
+ {
+  "id": 151,
+  "from": "jonas.desmet@mail.example",
+  "subject": "Student discount?",
+  "body": "Hi,\n\nWe offer SEO services that can triple your traffic!!! Reply for a free audit.\n\nMvg,\nJonas",
+  "expected_category": "scam_or_spam",
+  "expected_needs_human": true,
+  "subject_misleading": true
+ }
+]

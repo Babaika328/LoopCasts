@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from conftest import (api_payment, db, new_payment, order_count, pay, post_webhook, scalar, wait_for_orders)
+from conftest import (api_payment, db, mailpit_count, mailpit_subjects, new_payment, order_count, pay, post_webhook, scalar, wait_for_orders)
 
 pytestmark = pytest.mark.n8n
 HINT = "Is n8n running and is the workflow 'Payment paid to order' active (Publish)?"
@@ -30,6 +30,38 @@ def test_a_paid_order_gets_exactly_one_invoice_number():
         rows = db(sql)
     assert len(rows) == 1 and re.match(r"^\d{4}-\d{4}$", rows[0]), "No invoice number appeared. Did you add the invoice nodes to the workflow?"
     assert scalar(f"SELECT status FROM orders WHERE payment_id='{pid}'") == "invoiced"
+
+
+def _invoice_number(pid, timeout=25):
+    sql = f"SELECT invoice_number FROM invoices WHERE order_id = (SELECT id FROM orders WHERE payment_id='{pid}')"
+    deadline = time.time() + timeout
+    rows = db(sql)
+    while not rows and time.time() < deadline:
+        time.sleep(1)
+        rows = db(sql)
+    assert rows, "No invoice number appeared. Did you add the invoice nodes to the workflow?"
+    return rows[0]
+
+
+def test_the_invoice_email_is_claimed_once_the_order_is_invoiced():
+    pid, _ = new_payment()
+    pay(pid, "pay")
+    number = _invoice_number(pid)
+    deadline = time.time() + 25
+    sent = scalar(f"SELECT COUNT(*) FROM invoices WHERE invoice_number='{number}' AND emailed_at IS NOT NULL")
+    while sent != "1" and time.time() < deadline:
+        time.sleep(1)
+        sent = scalar(f"SELECT COUNT(*) FROM invoices WHERE invoice_number='{number}' AND emailed_at IS NOT NULL")
+    assert sent == "1", "The invoice was never marked as emailed. Did you add the claim and email nodes?"
+
+
+def test_the_customer_gets_exactly_one_invoice_email_even_if_the_webhook_comes_twice():
+    pid, _ = new_payment()
+    pay(pid, "pay", twice=True)
+    number = _invoice_number(pid)
+    time.sleep(10)
+    count = mailpit_count(number)
+    assert count == 1, f"Expected exactly one mail with {number} in its subject, found {count}. Latest subjects: {mailpit_subjects()[:5]}"
 
 
 def test_foreign_company_order_is_stored_with_reverse_charge():
