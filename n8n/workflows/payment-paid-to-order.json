@@ -10,7 +10,7 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.2,
       "position": [
-        -544,
+        -608,
         -32
       ],
       "id": "a51ad683-5208-4208-baf0-176d2f907cd3",
@@ -36,7 +36,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        -304,
+        -448,
         -32
       ],
       "id": "3c431149-6344-439f-bde5-d38141011171",
@@ -76,7 +76,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -80,
+        -304,
         -32
       ],
       "id": "105c361f-bc5e-4c1e-ad61-aa6cc4c2bbbf",
@@ -87,8 +87,8 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        144,
-        192
+        -192,
+        208
       ],
       "id": "1b447034-e8ec-4b2d-93c2-871f93e2fc17",
       "name": "Ignore: not paid"
@@ -100,38 +100,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        112,
-        -208
+        -192,
+        -240
       ],
       "id": "e129bad8-8f7d-49ac-9591-cf225fceb5cf",
       "name": "Check amount and VAT"
-    },
-    {
-      "parameters": {
-        "operation": "upsert",
-        "table": {
-          "__rl": true,
-          "value": "orders",
-          "mode": "list",
-          "cachedResultName": "orders"
-        },
-        "columnToMatchOn": "payment_id",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.mySql",
-      "typeVersion": 2.5,
-      "position": [
-        336,
-        -208
-      ],
-      "id": "eaaea121-b9f2-4db1-98ef-3f239bcf5c67",
-      "name": "Insert or update rows in a table",
-      "credentials": {
-        "mySql": {
-          "id": "q7Er3R4tW6F4rkkq",
-          "name": "MySQL account"
-        }
-      }
     },
     {
       "parameters": {
@@ -155,8 +128,8 @@
       "type": "n8n-nodes-base.mySql",
       "typeVersion": 2.5,
       "position": [
-        560,
-        -208
+        160,
+        -240
       ],
       "id": "e1250a9b-16be-4335-bce8-043860043d2b",
       "name": "Get order",
@@ -176,11 +149,12 @@
       "type": "n8n-nodes-base.mySql",
       "typeVersion": 2.5,
       "position": [
-        784,
-        -208
+        320,
+        -240
       ],
       "id": "87cf6e5a-b727-4ed4-8049-2df97dfb5c53",
       "name": "Create invoice number",
+      "retryOnFail": true,
       "credentials": {
         "mySql": {
           "id": "q7Er3R4tW6F4rkkq",
@@ -210,11 +184,134 @@
       "type": "n8n-nodes-base.mySql",
       "typeVersion": 2.5,
       "position": [
-        1008,
-        -208
+        480,
+        -240
       ],
       "id": "fe25fbc2-b039-4878-9c5d-429654752bc5",
       "name": "Get invoice",
+      "credentials": {
+        "mySql": {
+          "id": "q7Er3R4tW6F4rkkq",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE invoices SET emailed_at = NOW(), email_claim_execution = {{ Number($execution.id) || 0 }} WHERE order_id = {{ Number($json.order_id) }} AND emailed_at IS NULL",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        624,
+        -240
+      ],
+      "id": "0c932b56-291e-486a-a2bd-aa9cdcba6f19",
+      "name": "Claim invoice email",
+      "credentials": {
+        "mySql": {
+          "id": "q7Er3R4tW6F4rkkq",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node \"Build invoice email\" (mode: Run Once for All Items).\n// Reads the nodes \"Get order\" and \"Get invoice\" and returns { to, subject, html } for the Send Email node.\n// The workflow JSON is the source of truth; this copy is here so the code can be read, reviewed and tested.\nconst order = $('Get order').first().json;\nconst inv = $('Get invoice').first().json;\n\n// Everything that came from a customer is escaped, so it can never inject HTML into the email.\nconst esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;').replace(/'/g, '&#39;');\nconst eur = (cents) => '€ ' + (Number(cents) / 100).toFixed(2).replace('.', ',');\nconst day = (d) => new Date(d).toLocaleDateString('en-GB', { timeZone: 'Europe/Brussels' });\n\nconst names = {\n  monthly: 'Monthly subscription LoopCasts',\n  yearly: 'Yearly subscription LoopCasts',\n  team: 'Team licence LoopCasts (5 seats)',\n  single: 'Single course: ' + (order.course || ''),\n};\nconst description = names[order.plan] || 'LoopCasts';\nconst reverse = order.vat_rule === 'reverse_charge';\nconst total = Number(inv.total_cents);\n\n// Never send an invoice whose lines do not add up to its total.\nif (Number(order.amount_excl_cents) + Number(order.vat_cents) !== total) {\n  throw new Error(`Invoice ${inv.invoice_number}: lines (${order.amount_excl_cents} + ${order.vat_cents}) do not add up to the total ${total}`);\n}\n\nconst row = (label, value, bold) =>\n  `<tr><td style=\"padding:10px 0;border-top:1px solid #cfe8dc;${bold ? 'font-weight:bold;' : ''}\">${label}</td>` +\n  `<td align=\"right\" style=\"padding:10px 0;border-top:1px solid #cfe8dc;${bold ? 'font-weight:bold;' : ''}\">${value}</td></tr>`;\n\nconst html = `<!doctype html>\n<html><body style=\"margin:0;background:#eaf7f1;font-family:Arial,Helvetica,sans-serif;color:#17332a;\">\n<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#eaf7f1;padding:24px 12px;\"><tr><td align=\"center\">\n<table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:12px;\">\n  <tr><td style=\"padding:28px 32px 8px;\">\n    <div style=\"font-size:22px;font-weight:bold;\">LoopCasts</div>\n    <div style=\"font-size:13px;line-height:1.5;color:#4a6b5e;margin-top:4px;\">LoopCasts BV, Fietsstraat 12 bus 2, 9000 Gent<br>VAT BE 0712.345.678</div>\n  </td></tr>\n  <tr><td style=\"padding:16px 32px;\">\n    <div style=\"font-size:28px;font-weight:bold;color:#1f7a5c;\">Invoice ${esc(inv.invoice_number)}</div>\n    <div style=\"font-size:14px;color:#4a6b5e;margin-top:4px;\">Date: ${esc(day(inv.issued_on))}</div>\n  </td></tr>\n  <tr><td style=\"padding:8px 32px 20px;font-size:14px;line-height:1.6;\">\n    <strong>To</strong><br>${esc(order.company || order.name)}<br>${order.company ? esc(order.name) + '<br>' : ''}${order.vat_number ? 'VAT ' + esc(order.vat_number) + '<br>' : ''}${esc(order.email)}\n  </td></tr>\n  <tr><td style=\"padding:0 32px 8px;\">\n    <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"font-size:14px;\">\n      <tr><td style=\"padding:8px 0;color:#4a6b5e;font-size:12px;\">Description</td><td align=\"right\" style=\"padding:8px 0;color:#4a6b5e;font-size:12px;\">Amount (EUR)</td></tr>\n      ${row(esc(description), eur(order.amount_excl_cents))}\n      ${row(reverse ? 'VAT 0% (VAT reverse charged)' : 'VAT 21%', eur(order.vat_cents))}\n      ${row('Total', eur(total), true)}\n    </table>\n  </td></tr>\n  <tr><td style=\"padding:16px 32px 28px;font-size:14px;line-height:1.6;\">\n    Paid online. Thank you for learning with LoopCasts!\n  </td></tr>\n</table>\n</td></tr></table>\n</body></html>`;\n\nreturn [{ json: { to: order.email, subject: `Your LoopCasts invoice ${inv.invoice_number}`, html } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        -240
+      ],
+      "id": "712ef957-9d64-480d-9345-da29f93ffa8a",
+      "name": "Build invoice email"
+    },
+    {
+      "parameters": {
+        "fromEmail": "LoopCasts <invoices@loopcasts.test>",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1232,
+        -240
+      ],
+      "id": "4bcf43d0-0d41-4d06-9122-4948b4a3caee",
+      "name": "Send invoice",
+      "webhookId": "86387ee1-e061-45d9-980c-2b10741245c9",
+      "credentials": {
+        "smtp": {
+          "id": "FpFyxe16tvRgDxeN",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "table": {
+          "__rl": true,
+          "value": "invoices",
+          "mode": "list",
+          "cachedResultName": "invoices"
+        },
+        "where": {
+          "values": [
+            {
+              "column": "order_id",
+              "value": "={{ $('Get invoice').first().json.order_id }}"
+            },
+            {
+              "column": "email_claim_execution",
+              "value": "={{ Number($execution.id) || 0 }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        800,
+        -240
+      ],
+      "id": "4e231724-feca-4063-be94-594852952de1",
+      "name": "Check claim",
+      "credentials": {
+        "mySql": {
+          "id": "q7Er3R4tW6F4rkkq",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "table": {
+          "__rl": true,
+          "value": "orders",
+          "mode": "list",
+          "cachedResultName": "orders"
+        },
+        "columnToMatchOn": "payment_id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        -240
+      ],
+      "id": "eaaea121-b9f2-4db1-98ef-3f239bcf5c67",
+      "name": "Insert or update",
       "credentials": {
         "mySql": {
           "id": "q7Er3R4tW6F4rkkq",
@@ -293,18 +390,7 @@
       "main": [
         [
           {
-            "node": "Insert or update rows in a table",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Insert or update rows in a table": {
-      "main": [
-        [
-          {
-            "node": "Get order",
+            "node": "Insert or update",
             "type": "main",
             "index": 0
           }
@@ -332,6 +418,61 @@
           }
         ]
       ]
+    },
+    "Get invoice": {
+      "main": [
+        [
+          {
+            "node": "Claim invoice email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim invoice email": {
+      "main": [
+        [
+          {
+            "node": "Check claim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build invoice email": {
+      "main": [
+        [
+          {
+            "node": "Send invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check claim": {
+      "main": [
+        [
+          {
+            "node": "Build invoice email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert or update": {
+      "main": [
+        [
+          {
+            "node": "Get order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -343,7 +484,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "118fe4d7-998e-482d-a8ab-d3b7f41e55d3",
+  "versionId": "6ea0de27-a970-4405-a07c-a192641f0847",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "e9b712e3550050860bdc403941d6b87a4c667109ab3b9095c88c7aed534302cc"

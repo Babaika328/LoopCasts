@@ -60,6 +60,9 @@ CREATE TABLE IF NOT EXISTS invoices (
 -- When the invoice email was claimed for sending. The workflow claims it with one UPDATE ... WHERE emailed_at IS NULL,
 -- so if the webhook arrives twice, only one run gets to send the email.
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS emailed_at DATETIME NULL;
+-- Which n8n run claimed the email. After claiming, a run reads the invoice back and sends only if its own
+-- execution number is there (the Execute SQL node does not tell how many rows an UPDATE changed).
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS email_claim_execution INT UNSIGNED NULL;
 
 -- create_invoice(order_id, year): gives an order its invoice number, exactly once.
 --  * locks the order row first, so two runs for the same order take turns (the second one just gets the same number back)
