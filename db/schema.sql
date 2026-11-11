@@ -64,6 +64,47 @@ ALTER TABLE invoices ADD COLUMN IF NOT EXISTS emailed_at DATETIME NULL;
 -- execution number is there (the Execute SQL node does not tell how many rows an UPDATE changed).
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS email_claim_execution INT UNSIGNED NULL;
 
+-- Customers who can log in to the members area. Passwords are bcrypt hashes (never MD5, never plain text).
+-- A new member has no password yet (password_hash IS NULL) and gets a one-time link to set one.
+CREATE TABLE IF NOT EXISTS members (
+  id             INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  email          VARCHAR(190) NOT NULL,                        -- always stored in lower case
+  name           VARCHAR(120) NOT NULL,
+  password_hash  VARCHAR(255) NULL,
+  access_until   DATE NULL,                                    -- subscription end date; the members area enforces it
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_login_at  DATETIME NULL,
+  UNIQUE KEY uq_members_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- One-time links to set or reset a password. Only a hash of the link's secret is stored, so a leaked
+-- database cannot be used to take over accounts.
+CREATE TABLE IF NOT EXISTS password_tokens (
+  id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  member_id   INT UNSIGNED NOT NULL,
+  token_hash  CHAR(64) NOT NULL,
+  purpose     ENUM('set','reset') NOT NULL,
+  expires_at  DATETIME NOT NULL,
+  used_at     DATETIME NULL,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_token_hash (token_hash),
+  KEY idx_tokens_member (member_id),
+  CONSTRAINT fk_tokens_member FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Failed logins and password-reset requests, to slow down guessing.
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id            INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  email         VARCHAR(200) NOT NULL,
+  ip            VARCHAR(45)  NOT NULL,
+  attempted_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_attempts_email (email, attempted_at),
+  KEY idx_attempts_ip (ip, attempted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Set once access has been granted for an order, so a repeated webhook never grants (or extends) access twice.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS access_granted_at DATETIME NULL;
+
 -- create_invoice(order_id, year): gives an order its invoice number, exactly once.
 --  * locks the order row first, so two runs for the same order take turns (the second one just gets the same number back)
 --  * locks the counter row of that year, so two different orders take turns (numbers are unique and have no gaps)
@@ -85,6 +126,9 @@ BEGIN
   -- creating it inside the transaction made two callers hold a read lock and both wait for a write lock (a deadlock).
   INSERT IGNORE INTO invoice_counters (year, last_number) VALUES (p_year, 0);
 
+  -- READ COMMITTED: the default level takes "gap" locks on the invoices index during the existence check below, and
+  -- two callers holding such locks then block each other's insert (a deadlock found by the stress test).
+  SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
   START TRANSACTION;
 
   SELECT amount_excl_cents + vat_cents INTO v_total FROM orders WHERE id = p_order_id FOR UPDATE;

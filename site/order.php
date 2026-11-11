@@ -84,6 +84,7 @@ function field_error(array $errors, string $key): string {
       <nav aria-label="Main">
         <a href="index.html#courses">Courses</a>
         <a href="index.html#pricing">Pricing</a>
+        <a href="/members/">Log in</a>
       </nav>
     </div>
   </header>

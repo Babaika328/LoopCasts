@@ -33,3 +33,5 @@ function vat_cents(int $exclCents, string $rule): int
 {
     return $rule === 'reverse_charge' ? 0 : intdiv($exclCents * VAT_PERCENT + 50, 100);
 }
+
+const PLAN_NAMES = ['monthly' => 'Monthly subscription', 'yearly' => 'Yearly subscription', 'team' => 'Team licence', 'single' => 'Single course'];

@@ -37,9 +37,11 @@ def _parse_http(raw):
     return status, headers, body
 
 
-def site(method, path, data=None, headers=None):
-    """Call the site from inside the DDEV web container, so DNS and ports do not matter."""
+def site(method, path, data=None, headers=None, jar=None):
+    """Call the site from inside the DDEV web container, so DNS and ports do not matter. `jar` keeps cookies between calls."""
     cmd = ["curl", "-s", "-i", "-X", method, "http://localhost" + path]
+    if jar:
+        cmd += ["-c", jar, "-b", jar]
     for key, value in (headers or {}).items():
         cmd += ["-H", f"{key}: {value}"]
     if data is not None:
@@ -56,6 +58,40 @@ def db(sql):
 
 def scalar(sql):
     return db(sql)[-1]
+
+
+def new_jar():
+    return "/tmp/pytest-jar-" + uuid.uuid4().hex[:10]
+
+
+def csrf_from(body):
+    found = re.search(r'name="csrf" value="([0-9a-f]+)"', body)
+    assert found, "No csrf field on the page"
+    return found.group(1)
+
+
+def get_csrf(path, jar):
+    status, _, body = site("GET", path, jar=jar)
+    return csrf_from(body)
+
+
+def insert_order(plan="yearly", course=None, email=None, name="Test Member"):
+    """Insert a paid order straight into the database (as n8n would). Returns (order id, email)."""
+    email = email or f"{MARK}m{uuid.uuid4().hex[:8]}@example.test"
+    course_sql = f"'{course}'" if course else "NULL"
+    rows = db(
+        "INSERT INTO orders (payment_id, plan, course, name, email, country, amount_excl_cents, vat_cents, vat_rule, status) "
+        f"VALUES ('tr_test_{uuid.uuid4().hex[:12]}', '{plan}', {course_sql}, '{name}', '{email}', 'BE', 14900, 3129, 'belgian_21', 'invoiced'); "
+        "SELECT LAST_INSERT_ID();"
+    )
+    return int(rows[-1]), email
+
+
+def grant(order_id, key="test_local_members"):
+    """Call the members API like n8n does. Returns (status, json)."""
+    headers = {"Authorization": f"Bearer {key}"} if key else {}
+    status, _, body = site("POST", "/members/api/create.php", {"order_id": str(order_id)}, headers)
+    return status, (json.loads(body) if body.lstrip().startswith("{") else None)
 
 
 def place_order(plan="yearly", country="BE", company=None, vat=None, course="n8n basics", email=None):
@@ -146,6 +182,9 @@ def clean_up_test_data():
     db(f"DELETE i FROM invoices i JOIN orders o ON o.id = i.order_id WHERE o.email LIKE '{MARK}%'")
     db(f"DELETE FROM orders WHERE email LIKE '{MARK}%'")
     db(f"DELETE FROM payments WHERE metadata LIKE '%{MARK}%'")
+    db(f"DELETE FROM login_attempts WHERE email LIKE '{MARK}%' OR email LIKE 'forgot:{MARK}%'")
+    db(f"DELETE FROM members WHERE email LIKE '{MARK}%'")
+    _run(["ddev", "exec", "rm -f /tmp/pytest-jar-*"])
     db("DELETE FROM invoice_counters WHERE year = 9999")
     # Test orders may have used real numbers of this year. Give the counter back, so the real numbers stay gap-free.
     db("UPDATE invoice_counters c SET c.last_number = ("

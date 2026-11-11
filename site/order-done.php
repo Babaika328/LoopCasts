@@ -18,7 +18,7 @@ if ($p === null) { http_response_code(404); }
   <header class="bar">
     <div class="wrap bar-inner">
       <a class="brand" href="index.html">LoopCasts</a>
-      <nav aria-label="Main"><a href="index.html#courses">Courses</a><a href="index.html#pricing">Pricing</a></nav>
+      <nav aria-label="Main"><a href="index.html#courses">Courses</a><a href="index.html#pricing">Pricing</a><a href="/members/">Log in</a></nav>
     </div>
   </header>
   <main class="wrap narrow section">
