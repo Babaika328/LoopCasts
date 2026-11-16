@@ -94,10 +94,10 @@ def grant(order_id, key="test_local_members"):
     return status, (json.loads(body) if body.lstrip().startswith("{") else None)
 
 
-def place_order(plan="yearly", country="BE", company=None, vat=None, course="n8n basics", email=None):
+def place_order(plan="yearly", country="BE", company=None, vat=None, course="n8n basics", email=None, name="Test Customer"):
     """Submit the order form. Returns (status, headers, body, email)."""
     email = email or f"{MARK}{uuid.uuid4().hex[:8]}@example.test"
-    data = {"plan": plan, "name": "Test Customer", "email": email, "country": country}
+    data = {"plan": plan, "name": name, "email": email, "country": country}
     if plan == "single":
         data["course"] = course
     if company is not None:
@@ -182,7 +182,7 @@ def clean_up_test_data():
     db(f"DELETE i FROM invoices i JOIN orders o ON o.id = i.order_id WHERE o.email LIKE '{MARK}%'")
     db(f"DELETE FROM orders WHERE email LIKE '{MARK}%'")
     db(f"DELETE FROM payments WHERE metadata LIKE '%{MARK}%'")
-    db(f"DELETE FROM login_attempts WHERE email LIKE '{MARK}%' OR email LIKE 'forgot:{MARK}%'")
+    db("DELETE FROM login_attempts")          # development database: no real attempts to keep
     db(f"DELETE FROM members WHERE email LIKE '{MARK}%'")
     _run(["ddev", "exec", "rm -f /tmp/pytest-jar-*"])
     db("DELETE FROM invoice_counters WHERE year = 9999")
@@ -190,3 +190,10 @@ def clean_up_test_data():
     db("UPDATE invoice_counters c SET c.last_number = ("
        "SELECT COALESCE(MAX(CAST(SUBSTRING(invoice_number, 6) AS UNSIGNED)), 0) FROM invoices "
        "WHERE invoice_number LIKE CONCAT(c.year, '-%'))")
+
+
+@pytest.fixture
+def fresh_limits():
+    """Start a test with empty rate-limit counters, so one test's failed logins never block the next."""
+    db("DELETE FROM login_attempts")
+    yield

@@ -6,6 +6,7 @@ declare(strict_types=1);
 require __DIR__ . '/lib/bootstrap.php';
 require __DIR__ . '/lib/shop.php';
 require __DIR__ . '/lib/payments.php';
+require_once __DIR__ . '/lib/members.php';   // rate limiting helpers
 
 $plans = PLANS;
 $courses = COURSES;
@@ -17,8 +18,15 @@ $plan = $plans[$planKey];
 
 $v = ['name' => '', 'email' => '', 'is_company' => '', 'company' => '', 'vat' => '', 'country' => 'BE', 'course' => ''];
 $errors = [];
+$limited = false;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// At most 120 orders per address in 15 minutes: enough for any customer, too few to flood the payments table.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && rate_limited('order:' . client_ip(), 120)) {
+    $limited = true;
+    http_response_code(429);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$limited) {
     foreach ($v as $k => $_) { $v[$k] = trim((string)($_POST[$k] ?? '')); }
 
     if ($v['name'] === '') { $errors['name'] = 'Enter your name.'; }
@@ -56,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'vat_cents' => $vatCents,
             'vat_rule' => $rule,
         ]);
+        record_attempt('order:' . client_ip());
         header('Location: /pay/checkout.php?id=' . $id);
         exit;
     }
@@ -93,8 +102,11 @@ function field_error(array $errors, string $key): string {
     <h1 class="h1-small">Order: <?= e($plan['name']) ?></h1>
     <p class="sub"><?= e($plan['price']) ?>, excluding VAT. <?= e($plan['note']) ?></p>
 
+<?php if ($limited): ?>
+    <p class="notice notice-error" role="alert">Too many orders from this address. Please try again in 15 minutes.</p>
+<?php endif; ?>
 <?php if ($errors): ?>
-    <p class="notice" role="alert">Check the <?= count($errors) === 1 ? 'highlighted field' : count($errors) . ' highlighted fields' ?> and try again.</p>
+    <p class="notice notice-error" role="alert">Check the <?= count($errors) === 1 ? 'highlighted field' : count($errors) . ' highlighted fields' ?> and try again.</p>
 <?php endif; ?>
 
     <form class="form" method="post" action="order.php" novalidate>
@@ -158,16 +170,7 @@ function field_error(array $errors, string $key): string {
       <div><button class="btn" type="submit">Continue</button></div>
     </form>
 
-    <script>
-      // Company fields only show when the box is ticked. Without JavaScript they stay visible.
-      (function () {
-        var box = document.getElementById('is_company');
-        var fields = document.getElementById('company-fields');
-        function sync() { fields.hidden = !box.checked; }
-        box.addEventListener('change', sync);
-        sync();
-      })();
-    </script>
+    <script src="/order.js"></script>
   </main>
 
   <footer class="foot">

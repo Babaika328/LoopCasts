@@ -43,7 +43,7 @@ page_start('Forgot your password');
   <p class="notice">If this address belongs to a member, we have sent a link to choose a new password. It works for 2 hours.</p>
   <p><a href="/members/login.php">Back to log in</a></p>
 <?php else: ?>
-  <?php if ($error): ?><p class="notice" role="alert"><?= e($error) ?></p><?php endif; ?>
+  <?php if ($error): ?><p class="notice notice-error" role="alert"><?= e($error) ?></p><?php endif; ?>
   <form class="form" method="post" action="/members/forgot.php">
     <?= csrf_field() ?>
     <div class="field"><label for="email">Email address</label>

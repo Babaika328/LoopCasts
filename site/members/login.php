@@ -46,7 +46,7 @@ page_start('Log in');
 ?>
 <h1 class="h1-small">Log in</h1>
 <?php if ($notice): ?><p class="notice"><?= e($notice) ?></p><?php endif; ?>
-<?php if ($error): ?><p class="notice" role="alert"><?= e($error) ?></p><?php endif; ?>
+<?php if ($error): ?><p class="notice notice-error" role="alert"><?= e($error) ?></p><?php endif; ?>
 <form class="form" method="post" action="/members/login.php">
   <?= csrf_field() ?>
   <div class="field"><label for="email">Email address</label>
@@ -55,5 +55,5 @@ page_start('Log in');
     <input id="password" name="password" type="password" autocomplete="current-password"></div>
   <div><button class="btn" type="submit">Log in</button></div>
 </form>
-<p><a href="/members/forgot.php">Forgot your password?</a></p>
+<p class="stack-top-sm"><a href="/members/forgot.php">Forgot your password?</a></p>
 <?php page_end();

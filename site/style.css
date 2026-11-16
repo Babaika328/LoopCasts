@@ -14,12 +14,12 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; font-family: var(--font); color: var(--ink); background: var(--white); line-height: 1.6; font-size: 1.0625rem; }
+body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; font-family: var(--font); color: var(--ink); background: var(--white); line-height: 1.6; font-size: 1.0625rem; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
 
 a { color: var(--green); }
 :focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
-.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 1.25rem; }
+.wrap { width: 100%; max-width: 1080px; margin: 0 auto; padding-inline: 1.25rem; }
 .skip { position: absolute; left: -999px; background: var(--ink); color: var(--white); padding: .5rem 1rem; }
 .skip:focus { left: 1rem; top: 1rem; z-index: 10; }
 
@@ -105,3 +105,12 @@ nav a:hover { color: var(--green); text-decoration: underline; text-underline-of
 .facts dd { margin: 0; font-weight: 600; }
 .actions { display: flex; flex-wrap: wrap; gap: .75rem; }
 .notice { margin-bottom: 1.25rem; }
+
+/* the page grows, so the footer stays at the bottom even on short pages */
+main { flex: 1 0 auto; }
+.foot { margin-top: auto; }
+
+/* errors are red, confirmations stay green */
+.notice-error { background: #fdecea; border-left-color: #b3261e; color: #7a1710; font-weight: 600; }
+.stack-top { margin-top: 2rem; }
+.stack-top-sm { margin-top: 1.25rem; }

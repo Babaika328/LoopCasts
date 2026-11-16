@@ -68,9 +68,17 @@ function throttled(string $key): bool
 {
     $byKey = db()->prepare('SELECT COUNT(*) FROM login_attempts WHERE email = :k AND attempted_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)');
     $byKey->execute([':k' => $key]);
-    $byIp = db()->prepare('SELECT COUNT(*) FROM login_attempts WHERE ip = :ip AND attempted_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)');
+    $byIp = db()->prepare("SELECT COUNT(*) FROM login_attempts WHERE ip = :ip AND email NOT LIKE 'order:%' AND attempted_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)");
     $byIp->execute([':ip' => client_ip()]);
     return (int)$byKey->fetchColumn() >= 5 || (int)$byIp->fetchColumn() >= 30;
+}
+
+// A plain limit on how often one key may be used in 15 minutes (used for the order form).
+function rate_limited(string $key, int $max): bool
+{
+    $st = db()->prepare('SELECT COUNT(*) FROM login_attempts WHERE email = :k AND attempted_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)');
+    $st->execute([':k' => $key]);
+    return (int)$st->fetchColumn() >= $max;
 }
 
 function record_attempt(string $key): void
@@ -109,4 +117,34 @@ function send_mail(string $to, string $subject, string $body): bool
 {
     $from = getenv('MAIL_FROM') ?: 'LoopCasts <noreply@loopcasts.test>';
     return @mail($to, $subject, $body, "From: $from\r\nContent-Type: text/plain; charset=UTF-8");
+}
+
+// Passwords that people choose first. The composition rules below push people towards variants of these, so the
+// obvious ones are refused by name.
+const COMMON_PASSWORDS = ['password1!', 'password123!', 'password1', 'welcome1!', 'welcome123!', 'qwerty123!', 'qwertyuiop1!',
+    'letmein123!', 'admin123!', 'iloveyou1!', 'abc12345!', 'changeme1!', 'p@ssw0rd', 'p@ssword1', 'passw0rd!', 'loopcasts1!',
+    'loopcasts2019!', 'loopcasts123!', 'summer2026!', 'winter2026!', 'welkom123!', 'wachtwoord1!', 'test1234!', '12345678a!'];
+
+// Returns the reason a password is refused, or null when it is fine.
+// Rules: 8 to 72 characters (72 is the most bcrypt uses), a lowercase letter, an uppercase letter, a digit and a special character.
+function password_error(string $password, string $email = ''): ?string
+{
+    $needs = [];
+    if (strlen($password) < 8) { $needs[] = 'at least 8 characters'; }
+    if (strlen($password) > 72) { $needs[] = 'at most 72 characters'; }
+    if (!preg_match('/[a-z]/', $password)) { $needs[] = 'a lowercase letter'; }
+    if (!preg_match('/[A-Z]/', $password)) { $needs[] = 'an uppercase letter'; }
+    if (!preg_match('/[0-9]/', $password)) { $needs[] = 'a digit'; }
+    if (!preg_match('/[^A-Za-z0-9]/', $password)) { $needs[] = 'a special character (for example ! ? # % &)'; }
+    if ($needs) {
+        return 'Your password needs ' . implode(', ', $needs) . '.';
+    }
+    if (in_array(strtolower($password), COMMON_PASSWORDS, true)) {
+        return 'This password is too common. Choose another one.';
+    }
+    $local = strtolower(strstr($email, '@', true) ?: '');
+    if (strlen($local) >= 4 && str_contains(strtolower($password), $local)) {
+        return 'The password must not contain the first part of your email address.';
+    }
+    return null;
 }

@@ -30,3 +30,19 @@ function euro(int $cents): string
 {
     return '€' . number_format($cents / 100, 2, '.', '');
 }
+
+// Sent with every PHP page. The CSP only allows our own scripts and styles (no inline code), blocks framing of our
+// forms (clickjacking) and limits where forms can post to. Static files such as index.html need the same headers
+// from the web server in production.
+function send_security_headers(): void
+{
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: DENY');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+    header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; form-action 'self'; frame-ancestors 'none'; base-uri 'self'");
+}
+
+if (PHP_SAPI !== 'cli') {
+    send_security_headers();
+}

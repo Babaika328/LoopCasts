@@ -1,49 +1,14 @@
 """Members area: access after payment, setting and resetting a password, login, and the protections around them.
 Needs only the site and the database (no n8n). Test members use emails that start with pytest+ and are removed afterwards."""
-import hashlib
 import uuid
 
 from conftest import db, get_csrf, grant, insert_order, new_jar, scalar, site
 
-GOOD = "a long enough password"
-WRONG = "definitely not the password"
+import pytest
 
+from members_helpers import (GOOD, WRONG, insert_reset_token, logged_in_member, login, new_member, set_password, token_from)
 
-def token_from(setup_url):
-    return setup_url.split("token=")[1]
-
-
-def set_password(token, password, again=None, jar=None):
-    jar = jar or new_jar()
-    csrf = get_csrf(f"/members/set-password.php?token={token}", jar)
-    data = {"csrf": csrf, "token": token, "password": password, "password_again": password if again is None else again}
-    return site("POST", "/members/set-password.php", data, jar=jar)
-
-
-def login(email, password, jar=None):
-    jar = jar or new_jar()
-    csrf = get_csrf("/members/login.php", jar)
-    return site("POST", "/members/login.php", {"csrf": csrf, "email": email, "password": password}, jar=jar), jar
-
-
-def new_member(plan="yearly", course=None, password=GOOD):
-    """A paid order, access granted through the API, and a password chosen through the link. Returns (email, order id)."""
-    order_id, email = insert_order(plan, course)
-    status, answer = grant(order_id)
-    assert status == 200 and answer["setup_url"], answer
-    status, headers, _ = set_password(token_from(answer["setup_url"]), password)
-    assert status == 302, "Setting the first password failed"
-    return email, order_id
-
-
-def insert_reset_token(email, purpose="reset", hours=2):
-    """A link whose secret the test knows, so the link flow can be tried without reading email."""
-    plain = uuid.uuid4().hex + uuid.uuid4().hex
-    member = scalar(f"SELECT id FROM members WHERE email='{email}'")
-    db(f"UPDATE password_tokens SET used_at = NOW() WHERE member_id = {member} AND used_at IS NULL")
-    db("INSERT INTO password_tokens (member_id, token_hash, purpose, expires_at) "
-       f"VALUES ({member}, '{hashlib.sha256(plain.encode()).hexdigest()}', '{purpose}', DATE_ADD(NOW(), INTERVAL {hours} HOUR))")
-    return plain
+pytestmark = pytest.mark.usefixtures("fresh_limits")
 
 
 # --- the API that n8n calls -------------------------------------------------------------------------------------
@@ -103,8 +68,8 @@ def test_the_full_path_from_payment_to_logged_in():
     assert status == 200 and "Choose your password" in body
     assert headers.get("referrer-policy") == "no-referrer" and "no-store" in headers.get("cache-control", "")
 
-    assert "at least 10" in set_password(token, "short")[2]
-    assert "not the same" in set_password(token, GOOD, again="something else entirely")[2]
+    assert "at least 8 characters" in set_password(token, "short")[2]
+    assert "not the same" in set_password(token, GOOD, again="Something-Else-1!")[2]
 
     status, headers, _ = set_password(token, GOOD)
     assert status == 302 and "notice=password-set" in headers["location"]
@@ -127,8 +92,8 @@ def test_a_link_works_only_once():
     # Trying to use the used link again (with a valid form token) is refused and the password stays as it was.
     jar = new_jar()
     csrf = get_csrf("/members/login.php", jar)
-    status, _, body = site("POST", "/members/set-password.php", {"csrf": csrf, "token": token, "password": "another long password",
-                                                                  "password_again": "another long password"}, jar=jar)
+    status, _, body = site("POST", "/members/set-password.php", {"csrf": csrf, "token": token, "password": "Another-Pass-77!",
+                                                                  "password_again": "Another-Pass-77!"}, jar=jar)
     assert status == 200 and "no longer works" in body
     assert login(email, GOOD)[0][0] == 302
 
@@ -228,11 +193,11 @@ def test_the_forgot_page_gives_the_same_answer_for_everyone():
 def test_a_reset_link_changes_the_password():
     email, _ = new_member()
     plain = insert_reset_token(email)
-    status, headers, _ = set_password(plain, "a brand new long password")
+    status, headers, _ = set_password(plain, "Fresh-Start-42!")
     assert status == 302
     (status, _, body), _ = login(email, GOOD)
     assert "Wrong email or password." in body                                       # the old password no longer works
-    (status, headers, _), _ = login(email, "a brand new long password")
+    (status, headers, _), _ = login(email, "Fresh-Start-42!")
     assert status == 302 and headers["location"] == "/members/"
 
 

@@ -22,7 +22,7 @@ page_start('Your account', true);
 <?php elseif ((int)$member['active'] === 1): ?>
   <p class="notice">Your subscription is active until <?= e(date('d/m/Y', strtotime($member['access_until']))) ?>.</p>
 <?php else: ?>
-  <p class="notice" role="alert">Your subscription ended on <?= e(date('d/m/Y', strtotime($member['access_until']))) ?>. <a href="/index.html#pricing">Renew it</a> to get access again.</p>
+  <p class="notice notice-error" role="alert">Your subscription ended on <?= e(date('d/m/Y', strtotime($member['access_until']))) ?>. <a href="/index.html#pricing">Renew it</a> to get access again.</p>
 <?php endif; ?>
 
 <h2>Your orders</h2>
@@ -36,7 +36,8 @@ page_start('Your account', true);
 </ul>
 <?php endif; ?>
 
-<form method="post" action="/members/logout.php" style="margin-top:2rem">
+<p class="stack-top"><a href="/members/password.php">Change your password</a></p>
+<form method="post" action="/members/logout.php" class="stack-top">
   <?= csrf_field() ?>
   <button class="btn btn-quiet" type="submit">Log out</button>
 </form>
