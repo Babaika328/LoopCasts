@@ -171,6 +171,38 @@ def mailpit_subjects():
         pytest.skip("Mailpit could not be asked (check the port with: ddev describe)")
 
 
+def mailpit_json(path):
+    result = _run(["ddev", "exec", shlex.join(["curl", "-s", "http://localhost:8025" + path])])
+    try:
+        return json.loads(result.stdout)
+    except ValueError:
+        pytest.skip("Mailpit could not be asked (check the port with: ddev describe)")
+
+
+def mails_to(address):
+    """Mails in Mailpit that are addressed to `address`, as a list of {"subject", "text"}."""
+    data = mailpit_json("/api/v1/messages?limit=200")
+    if "messages" not in data:
+        pytest.skip("Mailpit answered in a shape the tests do not know")
+    found = []
+    for message in data["messages"]:
+        recipients = [str(t.get("Address", "")).lower() for t in (message.get("To") or [])]
+        if address.lower() in recipients:
+            detail = mailpit_json("/api/v1/message/" + str(message["ID"]))
+            found.append({"subject": str(message.get("Subject", "")), "text": str(detail.get("Text", ""))})
+    return found
+
+
+def wait_for_mail(address, subject_part, timeout=25):
+    """Wait until a mail with `subject_part` in its subject has arrived for `address`. Returns the matching mails."""
+    deadline = time.time() + timeout
+    while True:
+        mails = [m for m in mails_to(address) if subject_part in m["subject"]]
+        if mails or time.time() > deadline:
+            return mails
+        time.sleep(1)
+
+
 def mailpit_count(text):
     """How many of the latest mails have `text` in their subject."""
     return sum(1 for subject in mailpit_subjects() if text in subject)

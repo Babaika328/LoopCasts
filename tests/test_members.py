@@ -1,8 +1,9 @@
 """Members area: access after payment, setting and resetting a password, login, and the protections around them.
 Needs only the site and the database (no n8n). Test members use emails that start with pytest+ and are removed afterwards."""
+import re
 import uuid
 
-from conftest import db, get_csrf, grant, insert_order, new_jar, scalar, site
+from conftest import db, get_csrf, grant, insert_order, new_jar, scalar, site, wait_for_mail
 
 import pytest
 
@@ -206,3 +207,15 @@ def test_a_new_reset_link_cancels_the_older_one():
     old = insert_reset_token(email)
     insert_reset_token(email)
     assert "no longer works" in site("GET", f"/members/set-password.php?token={old}")[2]
+
+
+def test_the_forgot_password_email_arrives_and_its_link_works():
+    email, _ = new_member()
+    jar = new_jar()
+    csrf = get_csrf("/members/forgot.php", jar)
+    assert site("POST", "/members/forgot.php", {"csrf": csrf, "email": email}, jar=jar)[0] == 200
+    mails = wait_for_mail(email, "Reset your LoopCasts password")
+    assert len(mails) == 1, "The reset email did not arrive in Mailpit"
+    token = re.search(r"token=([0-9a-f]{64})", mails[0]["text"]).group(1)
+    assert set_password(token, "Fresh-Start-42!")[0] == 302
+    assert login(email, "Fresh-Start-42!")[0][0] == 302

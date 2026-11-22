@@ -41,7 +41,7 @@ def new_payment_for_pages():
 def test_code_and_secrets_are_not_served_to_visitors():
     assert "<?php" not in site("GET", "/lib/members.php")[2] and "password_hash" not in site("GET", "/lib/members.php")[2]
     for path in ["/.env", "/.git/config", "/db/schema.sql", "/n8n/docker-compose.yml", "/tests/conftest.py"]:
-        assert site("GET", path)[0] == 404, path
+        assert site("GET", path)[0] in (403, 404), path          # DDEV answers 403 for dot files, 404 for the rest
 
 
 def test_the_members_api_accepts_only_post():

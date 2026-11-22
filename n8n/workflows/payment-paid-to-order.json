@@ -184,7 +184,7 @@
       "type": "n8n-nodes-base.mySql",
       "typeVersion": 2.5,
       "position": [
-        480,
+        528,
         -240
       ],
       "id": "fe25fbc2-b039-4878-9c5d-429654752bc5",
@@ -205,7 +205,7 @@
       "type": "n8n-nodes-base.mySql",
       "typeVersion": 2.5,
       "position": [
-        624,
+        752,
         -240
       ],
       "id": "0c932b56-291e-486a-a2bd-aa9cdcba6f19",
@@ -224,7 +224,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1008,
+        1184,
         -240
       ],
       "id": "712ef957-9d64-480d-9345-da29f93ffa8a",
@@ -241,7 +241,7 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        1232,
+        1392,
         -240
       ],
       "id": "4bcf43d0-0d41-4d06-9122-4948b4a3caee",
@@ -280,7 +280,7 @@
       "type": "n8n-nodes-base.mySql",
       "typeVersion": 2.5,
       "position": [
-        800,
+        960,
         -240
       ],
       "id": "4e231724-feca-4063-be94-594852952de1",
@@ -316,6 +316,110 @@
         "mySql": {
           "id": "q7Er3R4tW6F4rkkq",
           "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ddev-loopcasts-web/members/api/create.php",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "order_id",
+              "value": "={{ $('Get order').first().json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        544,
+        32
+      ],
+      "id": "889fb016-9d9d-4a57-8570-7b1e0a2e169b",
+      "name": "Grant access",
+      "retryOnFail": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "HZiYO5th387VD6pT",
+          "name": "Members API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "42568ee1-2a7c-45d5-a09f-088db4cd3782",
+              "leftValue": "={{ $json.setup_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        768,
+        32
+      ],
+      "id": "5143d69e-bed2-4bd8-991b-8193c983faa4",
+      "name": "Needs a link?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node \"Build access email\" (mode: Run Once for All Items).\n// Input: the answer of the node \"Grant access\" (the members API of the site).\n// Returns { to, subject, html } for the Send Email node. The link comes from our own site and is only shown once:\n// it is never stored in plain text, so if this email is lost the customer uses \"Forgot your password?\".\nconst a = $input.first().json;\n\nconst esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;').replace(/'/g, '&#39;');\nconst day = (d) => new Date(d).toLocaleDateString('en-GB', { timeZone: 'Europe/Brussels' });\n\n// Never send a broken or foreign link.\nif (!/^https?:\\/\\/[^\\s\"'<>]+\\/members\\/set-password\\.php\\?token=[0-9a-f]{64}$/.test(String(a.setup_url ?? ''))) {\n  throw new Error('The members API did not return a valid password link');\n}\n\nconst until = a.access_until\n  ? `<p style=\"margin:0 0 16px;\">Your subscription is active until <strong>${esc(day(a.access_until))}</strong>.</p>`\n  : '<p style=\"margin:0 0 16px;\">Your course is ready for you.</p>';\n\nconst html = `<!doctype html>\n<html><body style=\"margin:0;background:#eaf7f1;font-family:Arial,Helvetica,sans-serif;color:#17332a;\">\n<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#eaf7f1;padding:24px 12px;\"><tr><td align=\"center\">\n<table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;max-width:600px;background:#ffffff;border-radius:12px;\">\n  <tr><td style=\"padding:28px 32px 8px;font-size:22px;font-weight:bold;\">LoopCasts</td></tr>\n  <tr><td style=\"padding:8px 32px 0;\">\n    <div style=\"font-size:26px;font-weight:bold;color:#1f7a5c;\">Welcome, ${esc(a.name)}</div>\n  </td></tr>\n  <tr><td style=\"padding:16px 32px 8px;font-size:14px;line-height:1.6;\">\n    <p style=\"margin:0 0 16px;\">Thank you for your order. Your account is ready: choose a password and you can log in.</p>\n    ${until}\n    <p style=\"margin:24px 0;\"><a href=\"${esc(a.setup_url)}\" style=\"display:inline-block;background:#1f7a5c;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 24px;border-radius:10px;\">Choose your password</a></p>\n    <p style=\"margin:0 0 8px;color:#4a6b5e;font-size:13px;\">The link works for 7 days and only once. If it has expired, use &ldquo;Forgot your password?&rdquo; on the login page.</p>\n    <p style=\"margin:0 0 24px;color:#4a6b5e;font-size:13px;\">We will never ask for your password by email.</p>\n  </td></tr>\n</table>\n</td></tr></table>\n</body></html>`;\n\nreturn [{ json: { to: a.email, subject: 'Welcome to LoopCasts: choose your password', html } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        16
+      ],
+      "id": "91ea6818-8d79-4279-911c-176064335fda",
+      "name": "Build access email"
+    },
+    {
+      "parameters": {
+        "fromEmail": "LoopCasts <invoices@loopcasts.test>",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1184,
+        16
+      ],
+      "id": "97afb0c3-b67e-4ede-8e2b-5203520fdb49",
+      "name": "Send access email",
+      "webhookId": "54455795-b263-4328-85b5-7fbe49c00766",
+      "credentials": {
+        "smtp": {
+          "id": "FpFyxe16tvRgDxeN",
+          "name": "SMTP account"
         }
       }
     }
@@ -412,6 +516,11 @@
       "main": [
         [
           {
+            "node": "Grant access",
+            "type": "main",
+            "index": 0
+          },
+          {
             "node": "Get invoice",
             "type": "main",
             "index": 0
@@ -473,6 +582,39 @@
           }
         ]
       ]
+    },
+    "Grant access": {
+      "main": [
+        [
+          {
+            "node": "Needs a link?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs a link?": {
+      "main": [
+        [
+          {
+            "node": "Build access email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build access email": {
+      "main": [
+        [
+          {
+            "node": "Send access email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -484,7 +626,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "6ea0de27-a970-4405-a07c-a192641f0847",
+  "versionId": "45036efe-b4d3-42f4-acda-fda7ad14dc7d",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "e9b712e3550050860bdc403941d6b87a4c667109ab3b9095c88c7aed534302cc"
