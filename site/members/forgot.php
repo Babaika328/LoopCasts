@@ -25,11 +25,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $memberId = $st->fetchColumn();
             if ($memberId) {
                 $token = new_token((int)$memberId, 'reset');
-                send_mail($email, 'Reset your LoopCasts password',
-                    "Hello,\n\nSomeone asked to reset the password of this LoopCasts account.\n"
-                    . "If it was you, choose a new password here (the link works for 2 hours, once):\n\n"
-                    . site_url() . '/members/set-password.php?token=' . $token . "\n\n"
-                    . "If it was not you, ignore this email: nothing changes.\n\nLoopCasts support\n");
+                [$subject, $text, $html] = reset_email(site_url() . '/members/set-password.php?token=' . $token);
+                send_mail($email, $subject, $text, $html);
             }
         }
         $sent = true;   // the same answer whether the address is a member or not

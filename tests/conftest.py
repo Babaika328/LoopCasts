@@ -180,7 +180,7 @@ def mailpit_json(path):
 
 
 def mails_to(address):
-    """Mails in Mailpit that are addressed to `address`, as a list of {"subject", "text"}."""
+    """Mails in Mailpit that are addressed to `address`, as a list of {"subject", "text", "html"}."""
     data = mailpit_json("/api/v1/messages?limit=200")
     if "messages" not in data:
         pytest.skip("Mailpit answered in a shape the tests do not know")
@@ -189,7 +189,7 @@ def mails_to(address):
         recipients = [str(t.get("Address", "")).lower() for t in (message.get("To") or [])]
         if address.lower() in recipients:
             detail = mailpit_json("/api/v1/message/" + str(message["ID"]))
-            found.append({"subject": str(message.get("Subject", "")), "text": str(detail.get("Text", ""))})
+            found.append({"subject": str(message.get("Subject", "")), "text": str(detail.get("Text", "")), "html": str(detail.get("HTML", ""))})
     return found
 
 

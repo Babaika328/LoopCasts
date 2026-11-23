@@ -217,5 +217,7 @@ def test_the_forgot_password_email_arrives_and_its_link_works():
     mails = wait_for_mail(email, "Reset your LoopCasts password")
     assert len(mails) == 1, "The reset email did not arrive in Mailpit"
     token = re.search(r"token=([0-9a-f]{64})", mails[0]["text"]).group(1)
+    # the email is styled like the others: an HTML part with a button, and a plain-text part for mail programs that need it
+    assert "Choose a new password" in mails[0]["html"] and f"token={token}" in mails[0]["html"] and "background:#1f7a5c" in mails[0]["html"]
     assert set_password(token, "Fresh-Start-42!")[0] == 302
     assert login(email, "Fresh-Start-42!")[0][0] == 302

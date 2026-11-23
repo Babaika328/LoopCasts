@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/mail.php';
 
 // A real bcrypt hash of a throwaway string. Used when the email is unknown, so that checking a wrong email
 // takes as long as checking a wrong password and the answer does not reveal who is a member.
@@ -111,68 +112,6 @@ function find_valid_token(string $plain): ?array
     $st = db()->prepare('SELECT t.id, t.member_id, t.purpose, m.email FROM password_tokens t JOIN members m ON m.id = t.member_id WHERE t.token_hash = :h AND t.used_at IS NULL AND t.expires_at > NOW()');
     $st->execute([':h' => hash('sha256', $plain)]);
     return $st->fetch() ?: null;
-}
-
-// Sends one plain-text email. If SMTP_HOST is set (or the site runs in DDEV, where Mailpit catches all mail on port 1025)
-// it talks to that SMTP server directly, so a failure is visible in the log. Otherwise it falls back to PHP's mail().
-// This small client is meant for a mail catcher or an internal relay without login. A production mail server with
-// TLS and a password needs a proper library.
-function send_mail(string $to, string $subject, string $body): bool
-{
-    if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
-        return false;
-    }
-    $from = getenv('MAIL_FROM') ?: 'LoopCasts <noreply@loopcasts.test>';
-    $host = getenv('SMTP_HOST') ?: (getenv('IS_DDEV_PROJECT') ? '127.0.0.1' : '');
-    if ($host === '') {
-        return @mail($to, $subject, $body, "From: $from\r\nContent-Type: text/plain; charset=UTF-8");
-    }
-    return smtp_send($host, (int)(getenv('SMTP_PORT') ?: 1025), $from, $to, $subject, $body);
-}
-
-function smtp_send(string $host, int $port, string $from, string $to, string $subject, string $body): bool
-{
-    $fp = @stream_socket_client("tcp://$host:$port", $errno, $errstr, 5);
-    if (!$fp) {
-        error_log("smtp_send: cannot connect to $host:$port ($errstr)");
-        return false;
-    }
-    stream_set_timeout($fp, 5);
-    $read = function () use ($fp): string {
-        $out = '';
-        while (($line = fgets($fp, 515)) !== false) {
-            $out .= $line;
-            if (strlen($line) < 4 || $line[3] === ' ') {
-                break;
-            }
-        }
-        return $out;
-    };
-    $say = function (string $command, string $expect) use ($fp, $read): bool {
-        fwrite($fp, $command . "\r\n");
-        return str_starts_with($read(), $expect);
-    };
-    $address = preg_match('/<([^>]+)>/', $from, $m) ? $m[1] : $from;
-    $subject = str_replace(["\r", "\n"], ' ', $subject);
-    $encoded = preg_match('/[^\x20-\x7e]/', $subject) ? '=?UTF-8?B?' . base64_encode($subject) . '?=' : $subject;
-    $message = "From: $from\r\nTo: $to\r\nSubject: $encoded\r\nDate: " . date('r') . "\r\nMessage-ID: <" . bin2hex(random_bytes(8)) . "@loopcasts>\r\n"
-        . "MIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n"
-        . preg_replace('/^\./m', '..', str_replace(["\r\n", "\r"], "\n", $body));
-    $message = str_replace("\n", "\r\n", str_replace("\r\n", "\n", $message));
-
-    $ok = str_starts_with($read(), '220')
-        && $say('EHLO loopcasts', '250')
-        && $say("MAIL FROM:<$address>", '250')
-        && $say("RCPT TO:<$to>", '250')
-        && $say('DATA', '354')
-        && $say($message . "\r\n.", '250');
-    if ($ok) {
-        $say('QUIT', '221');
-    } else {
-        error_log("smtp_send: the server at $host:$port refused the message");
-    }
-    fclose($fp);
-    return $ok;
 }
 
 // Passwords that people choose first. The composition rules below push people towards variants of these, so the
