@@ -17,6 +17,13 @@ if (!isset($plans[$planKey])) { $planKey = 'yearly'; }
 $plan = $plans[$planKey];
 
 $v = ['name' => '', 'email' => '', 'is_company' => '', 'company' => '', 'vat' => '', 'country' => 'BE', 'course' => ''];
+// A logged-in member gets name and email filled in. Visitors without a session cookie never get one from this page.
+$member = isset($_COOKIE['loopcasts']) ? current_member() : null;
+if ($member && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $v['name'] = $member['name'];
+    $v['email'] = $member['email'];
+}
+
 $errors = [];
 $limited = false;
 

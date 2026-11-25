@@ -75,14 +75,15 @@ def get_csrf(path, jar):
     return csrf_from(body)
 
 
-def insert_order(plan="yearly", course=None, email=None, name="Test Member"):
+def insert_order(plan="yearly", course=None, email=None, name="Test Member", company=None, vat_number=None,
+                 country="BE", vat_cents=3129, vat_rule="belgian_21"):
     """Insert a paid order straight into the database (as n8n would). Returns (order id, email)."""
     email = email or f"{MARK}m{uuid.uuid4().hex[:8]}@example.test"
-    course_sql = f"'{course}'" if course else "NULL"
+    sql_text = lambda v: "NULL" if v is None else "'" + str(v).replace("\\", "\\\\").replace("'", "''") + "'"
     rows = db(
-        "INSERT INTO orders (payment_id, plan, course, name, email, country, amount_excl_cents, vat_cents, vat_rule, status) "
-        f"VALUES ('tr_test_{uuid.uuid4().hex[:12]}', '{plan}', {course_sql}, '{name}', '{email}', 'BE', 14900, 3129, 'belgian_21', 'invoiced'); "
-        "SELECT LAST_INSERT_ID();"
+        "INSERT INTO orders (payment_id, plan, course, name, email, company, vat_number, country, amount_excl_cents, vat_cents, vat_rule, status) "
+        f"VALUES ('tr_test_{uuid.uuid4().hex[:12]}', '{plan}', {sql_text(course)}, {sql_text(name)}, '{email}', {sql_text(company)}, "
+        f"{sql_text(vat_number)}, '{country}', 14900, {vat_cents}, '{vat_rule}', 'invoiced'); SELECT LAST_INSERT_ID();"
     )
     return int(rows[-1]), email
 
@@ -215,6 +216,8 @@ def clean_up_test_data():
     db(f"DELETE FROM orders WHERE email LIKE '{MARK}%'")
     db(f"DELETE FROM payments WHERE metadata LIKE '%{MARK}%'")
     db("DELETE FROM login_attempts")          # development database: no real attempts to keep
+    db(f"DELETE FROM tickets WHERE from_email LIKE '{MARK}%'")
+    db(f"DELETE FROM audit_log WHERE actor_email LIKE '{MARK}%'")
     db(f"DELETE FROM members WHERE email LIKE '{MARK}%'")
     _run(["ddev", "exec", "rm -f /tmp/pytest-jar-*"])
     db("DELETE FROM invoice_counters WHERE year = 9999")

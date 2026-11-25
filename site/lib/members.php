@@ -54,7 +54,7 @@ function current_member(): ?array
     if (!$id) {
         return null;
     }
-    $st = db()->prepare('SELECT id, email, name, access_until, (access_until IS NOT NULL AND access_until >= CURDATE()) AS active FROM members WHERE id = :id');
+    $st = db()->prepare('SELECT id, email, name, access_until, (access_until IS NOT NULL AND access_until >= CURDATE()) AS active, DATEDIFF(access_until, CURDATE()) AS days_left FROM members WHERE id = :id');
     $st->execute([':id' => (int)$id]);
     return $st->fetch() ?: null;
 }

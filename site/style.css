@@ -114,3 +114,14 @@ main { flex: 1 0 auto; }
 .notice-error { background: #fdecea; border-left-color: #b3261e; color: #7a1710; font-weight: 600; }
 .stack-top { margin-top: 2rem; }
 .stack-top-sm { margin-top: 1.25rem; }
+
+/* invoice page and a few form details */
+.invoice { border: 1px solid var(--line); border-radius: 14px; padding: 1.75rem; }
+.invoice-seller, .invoice-to { line-height: 1.6; }
+.invoice-title { color: var(--green); margin-top: 1rem; }
+.invoice-table { width: 100%; border-collapse: collapse; margin: 1.25rem 0; }
+.invoice-table th, .invoice-table td { padding: .6rem 0; border-bottom: 1px solid var(--line); text-align: left; }
+.invoice-table .num { text-align: right; white-space: nowrap; }
+.invoice-table .total td { font-weight: 700; border-bottom: 0; }
+.field textarea { width: 100%; padding: .7rem .85rem; font: inherit; color: var(--ink); background: var(--white); border: 1.5px solid #5d8a79; border-radius: 10px; }
+@media print { .bar, .foot, .no-print, .skip { display: none !important; } .invoice { border: 0; padding: 0; } body { min-height: 0; } }

@@ -10,6 +10,7 @@
 !db/schema.sql
 **/bank/*.csv
 **/KBC export*.csv
+.ddev
 
 # bulk raw data — reference material for analysis, not project code.
 # keep a handful of examples in fixtures/ instead of committing all of this.

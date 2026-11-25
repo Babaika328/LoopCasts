@@ -105,6 +105,44 @@ CREATE TABLE IF NOT EXISTS login_attempts (
 -- Set once access has been granted for an order, so a repeated webhook never grants (or extends) access twice.
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS access_granted_at DATETIME NULL;
 
+-- Support tickets: emails from customers and requests made in the profile (cancel, delete my account).
+-- The AI step fills category, language, draft_reply and needs_human; a person approves the draft in the admin panel.
+CREATE TABLE IF NOT EXISTS tickets (
+  id               INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  source           ENUM('email','profile') NOT NULL,
+  member_id        INT UNSIGNED NULL,
+  from_email       VARCHAR(190) NOT NULL,
+  subject          VARCHAR(200) NOT NULL,
+  body             TEXT NOT NULL,
+  received_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  category         ENUM('login_access','invoice_request','order_status','content_question','video_problem','team_seats',
+                        'cancel_or_refund','idea_or_partnership','scam_or_spam','privacy_request','other') NOT NULL DEFAULT 'other',
+  language         ENUM('nl','en','fr','other') NULL,
+  needs_human      TINYINT(1) NOT NULL DEFAULT 1,
+  confidence       DECIMAL(3,2) NULL,
+  draft_reply      TEXT NULL,
+  validation_note  VARCHAR(300) NULL,
+  status           ENUM('new','needs_human','drafted','approved','sent','rejected','closed') NOT NULL DEFAULT 'new',
+  handled_by       INT UNSIGNED NULL,
+  handled_at       DATETIME NULL,
+  KEY idx_tickets_status (status, received_at),
+  KEY idx_tickets_member (member_id),
+  CONSTRAINT fk_tickets_member FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Who did what, and when. Every admin action and every export of personal data is written here.
+CREATE TABLE IF NOT EXISTS audit_log (
+  id           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  actor_id     INT UNSIGNED NULL,
+  actor_email  VARCHAR(190) NOT NULL,
+  action       VARCHAR(60) NOT NULL,
+  target       VARCHAR(120) NULL,
+  details      VARCHAR(500) NULL,
+  ip           VARCHAR(45) NULL,
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_audit_time (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- create_invoice(order_id, year): gives an order its invoice number, exactly once.
 --  * locks the order row first, so two runs for the same order take turns (the second one just gets the same number back)
 --  * locks the counter row of that year, so two different orders take turns (numbers are unique and have no gaps)

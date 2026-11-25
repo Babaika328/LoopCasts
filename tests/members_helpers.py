@@ -51,3 +51,18 @@ def insert_reset_token(email, purpose="reset", hours=2):
     db("INSERT INTO password_tokens (member_id, token_hash, purpose, expires_at) "
        f"VALUES ({member}, '{hashlib.sha256(plain.encode()).hexdigest()}', '{purpose}', DATE_ADD(NOW(), INTERVAL {hours} HOUR))")
     return plain
+
+
+def member_for_order(order_id, email, password=GOOD):
+    """Give the customer of an existing order access, choose the password, log in. Returns the cookie jar."""
+    status, answer = grant(order_id)
+    assert status == 200 and answer["setup_url"], answer
+    assert set_password(token_from(answer["setup_url"]), password)[0] == 302
+    (status, _, _), jar = login(email, password)
+    assert status == 302
+    return jar
+
+
+def invoice_number_for(order_id):
+    """Create the invoice of an order in the test year 9999 (so the real counter is untouched). Returns its number."""
+    return db(f"CALL create_invoice({order_id}, 9999)")[-1]
